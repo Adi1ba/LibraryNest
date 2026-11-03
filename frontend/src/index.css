@@ -1,29 +1,17 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
+* {
+  box-sizing: border-box;
 }
 
-main {
-  max-width: 480px;
-  margin: 4rem auto;
-  padding: 0 1rem;
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-form {
-  display: flex;
-  gap: 0.5rem;
-}
-
-input {
-  flex: 1;
-  padding: 0.5rem;
-}
-
-button {
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-}
-
-.error {
-  color: crimson;
+body {
+  min-width: 320px;
+  font-family: 'Nunito', sans-serif;
 }

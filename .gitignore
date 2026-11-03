@@ -12,3 +12,11 @@ frontend/dist/
 .vercel/
 .vscode/*
 !.vscode/extensions.json
+# Additional Python environment
+venv/
+
+# Local database
+backend/library_nest.db
+
+# Python cache folders
+**/__pycache__/
