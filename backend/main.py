@@ -1,37 +1,32 @@
-from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="FastAPI + React")
+from app.books.router import router as books_router
+from app.database import create_db_and_tables
+
+app = FastAPI(title="LibraryNest API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+create_db_and_tables()
+app.include_router(books_router)
 
 
 @app.get("/api/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health_check():
+    return {"status": "healthy"}
 
 
 @app.get("/api/hello")
-def hello(name: str = "World") -> dict[str, str]:
-    return {"message": f"Hello, {name}!"}
-
-
-# EXERCISE (part 1): uncomment to add POST /api/user, then test it at /docs.
-# from pydantic import BaseModel, EmailStr
-#
-#
-# class User(BaseModel):
-#     id: int
-#     name: str
-#     email: EmailStr  # invalid emails get a 422 response automatically
-#
-#
-# @app.post("/api/user")
-# def create_user(user: User) -> dict[str, str]:
-#     return {"message": f"Hello {user.name} (ID {user.id}), we'll email you at {user.email}."}
-
-
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-
-# dist/ only exists after `npm run build`; in dev the Vite server serves the UI.
-if FRONTEND_DIR.is_dir():
-    app.frontend("/", directory=FRONTEND_DIR)
+def hello():
+    return {"message": "Hello from LibraryNest!"}
