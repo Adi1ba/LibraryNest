@@ -1,6 +1,6 @@
 import type { Book, BookCreate, BookUpdate } from "../types/book";
 
-const API_URL = "http://localhost:8000/api/books";
+const API_URL = "/api/books";
 
 export const getBooks = async (): Promise<Book[]> => {
   const response = await fetch(`${API_URL}/`);
