@@ -53,12 +53,13 @@ def update_book(
 ) -> Book:
     update_data = book_data.model_dump(exclude_unset=True)
 
+    borrowed_copies = book.total_copies - book.available_copies
+
     for key, value in update_data.items():
         setattr(book, key, value)
 
-    # Keep available copies equal to total copies in the current MVP.
     if "total_copies" in update_data:
-        book.available_copies = update_data["total_copies"]
+        book.available_copies = book.total_copies - borrowed_copies
 
     book.updated_at = datetime.now(timezone.utc)
 

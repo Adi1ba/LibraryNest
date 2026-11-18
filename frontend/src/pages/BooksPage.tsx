@@ -74,8 +74,8 @@ function BooksPage() {
     } catch {
       setError(
         editingId !== null
-          ? "Unable to update book. Check the ISBN."
-          : "Unable to add book. Check the ISBN."
+          ? "Unable to update book. Check the ISBN and copy count."
+          : "Unable to add book. Check the ISBN and copy count."
       );
     }
   };
@@ -337,56 +337,62 @@ function BooksPage() {
                       <tr>
                         <th>BOOK DETAILS</th>
                         <th>ISBN</th>
-                        <th>COPIES</th>
-                        <th>AVAILABLE</th>
+                        <th>TOTAL COPIES</th>
+                        <th>AVAILABLE COPIES</th>
+                        <th>STATUS</th>
                         <th>ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredBooks.map((book) => (
-                        <tr key={book.id}>
-                          <td>
-                            <div className="book-title-cell">
-                              <div className="book-cover">
-                                {book.title.charAt(0).toUpperCase()}
+                      {filteredBooks.map((book) => {
+                        const isAvailable = book.available_copies > 0;
+
+                        return (
+                          <tr key={book.id}>
+                            <td>
+                              <div className="book-title-cell">
+                                <div className="book-cover">
+                                  {book.title.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <strong>{book.title}</strong>
+                                  <span>{book.author}</span>
+                                </div>
                               </div>
-                              <div>
-                                <strong>{book.title}</strong>
-                                <span>{book.author}</span>
+                            </td>
+                            <td className="isbn-cell">{book.isbn}</td>
+                            <td>{book.total_copies}</td>
+                            <td>{book.available_copies}</td>
+                            <td>
+                              <span
+                                className={`availability ${
+                                  isAvailable ? "in-stock" : "out-stock"
+                                }`}
+                              >
+                                {isAvailable ? "Available" : "Unavailable"}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="action-buttons">
+                                <button
+                                  className="edit-button"
+                                  type="button"
+                                  onClick={() => handleEdit(book)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="delete-button"
+                                  type="button"
+                                  onClick={() => handleDelete(book)}
+                                >
+                                  Delete
+                                </button>
                               </div>
-                            </div>
-                          </td>
-                          <td className="isbn-cell">{book.isbn}</td>
-                          <td>{book.total_copies}</td>
-                          <td>
-                            <span
-                              className={`availability ${
-                                book.available_copies > 0 ? "in-stock" : "out-stock"
-                              }`}
-                            >
-                              {book.available_copies} available
-                            </span>
-                          </td>
-                          <td>
-                            <div className="action-buttons">
-                              <button
-                                className="edit-button"
-                                type="button"
-                                onClick={() => handleEdit(book)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="delete-button"
-                                type="button"
-                                onClick={() => handleDelete(book)}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

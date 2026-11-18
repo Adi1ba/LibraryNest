@@ -9,9 +9,9 @@ from app.books.schemas import BookCreate, BookUpdate
 
 
 def create_book(session: Session, book_data: BookCreate) -> Book:
-    existing_book = repository.get_books(session)
+    existing_books = repository.get_books(session)
 
-    if any(book.isbn == book_data.isbn for book in existing_book):
+    if any(book.isbn == book_data.isbn for book in existing_books):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A book with this ISBN already exists."
@@ -58,6 +58,19 @@ def update_book(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="A book with this ISBN already exists."
+            )
+
+    if "total_copies" in update_data:
+        new_total = update_data["total_copies"]
+        borrowed_copies = book.total_copies - book.available_copies
+
+        if new_total < borrowed_copies:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Total copies cannot be less than "
+                    "the number of borrowed copies."
+                )
             )
 
     return repository.update_book(session, book, book_data)
