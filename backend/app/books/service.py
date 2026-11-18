@@ -1,3 +1,4 @@
+
 # Business logic for Book CRUD.
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -19,8 +20,11 @@ def create_book(session: Session, book_data: BookCreate) -> Book:
     return repository.create_book(session, book_data)
 
 
-def get_books(session: Session) -> list[Book]:
-    return repository.get_books(session)
+def get_books(
+    session: Session,
+    search: str | None = None
+) -> list[Book]:
+    return repository.get_books(session, search)
 
 
 def get_book(session: Session, book_id: int) -> Book:

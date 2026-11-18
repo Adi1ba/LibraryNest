@@ -2,7 +2,7 @@
 # Database operations for books.
 from datetime import datetime, timezone
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.books.models import Book
 from app.books.schemas import BookCreate, BookUpdate
@@ -21,8 +21,24 @@ def create_book(session: Session, book_data: BookCreate) -> Book:
     return book
 
 
-def get_books(session: Session) -> list[Book]:
-    statement = select(Book).order_by(Book.id)
+def get_books(
+    session: Session,
+    search: str | None = None
+) -> list[Book]:
+
+    statement = select(Book)
+
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+
+        statement = statement.where(
+            col(Book.title).ilike(search_term)
+            | col(Book.author).ilike(search_term)
+            | col(Book.isbn).ilike(search_term)
+        )
+
+    statement = statement.order_by(col(Book.id).asc())
+
     return list(session.exec(statement).all())
 
 

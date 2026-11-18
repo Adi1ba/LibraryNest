@@ -5,7 +5,6 @@ from typing import Annotated
 from pydantic import StringConstraints, field_validator
 from sqlmodel import Field, SQLModel
 
-
 Title = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=200)

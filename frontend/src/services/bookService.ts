@@ -1,9 +1,14 @@
+
 import type { Book, BookCreate, BookUpdate } from "../types/book";
 
 const API_URL = "/api/books";
 
-export const getBooks = async (): Promise<Book[]> => {
-  const response = await fetch(`${API_URL}/`);
+export const getBooks = async (search?: string): Promise<Book[]> => {
+  const query = search?.trim()
+    ? `?search=${encodeURIComponent(search.trim())}`
+    : "";
+
+  const response = await fetch(`${API_URL}/${query}`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch books");
