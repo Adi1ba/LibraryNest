@@ -5,7 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.books.router import router as books_router
 from app.database import create_db_and_tables
 
-app = FastAPI(title="LibraryNest API")
+app = FastAPI(
+    title="LibraryNest API",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,9 +1,10 @@
+
 # API endpoints for Book CRUD.
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 
 from app.books import service
-from app.books.schemas import BookCreate, BookRead, BookUpdate
 from app.books.dependencies import SessionDep
+from app.books.schemas import BookCreate, BookRead, BookUpdate
 
 
 router = APIRouter(prefix="/api/books", tags=["Books"])
@@ -19,8 +20,11 @@ def create_book(book_data: BookCreate, session: SessionDep):
 
 
 @router.get("/", response_model=list[BookRead])
-def get_books(session: SessionDep):
-    return service.get_books(session)
+def get_books(
+    session: SessionDep,
+    search: str | None = Query(default=None)
+):
+    return service.get_books(session, search)
 
 
 @router.get("/{book_id}", response_model=BookRead)
