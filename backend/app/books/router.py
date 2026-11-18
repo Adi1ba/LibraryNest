@@ -1,9 +1,8 @@
 
-# API endpoints for Book CRUD.
 from fastapi import APIRouter, Query, status
 
+from app.database import SessionDep
 from app.books import service
-from app.books.dependencies import SessionDep
 from app.books.schemas import BookCreate, BookRead, BookUpdate
 
 

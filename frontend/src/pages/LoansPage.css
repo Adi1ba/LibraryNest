@@ -1,0 +1,122 @@
+
+.loans-content-grid {
+  grid-template-columns: minmax(260px, 0.65fr) minmax(0, 2fr);
+}
+
+.form-field select {
+  width: 100%;
+  min-height: 43px;
+  padding: 0 12px;
+  border: 1px solid #e8cfd7;
+  border-radius: 8px;
+  outline: none;
+  background: #fffafb;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.form-field select:focus {
+  border-color: #91ad91;
+  box-shadow: 0 0 0 3px rgba(145, 173, 145, 0.18);
+}
+
+.primary-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.refresh-button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid #d1e2d0;
+  border-radius: 8px;
+  background: #e7f0e5;
+  color: #5e7c61;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.refresh-button:hover {
+  background: #d6e8d5;
+}
+
+.loans-table td {
+  white-space: normal;
+  min-width: 85px;
+}
+
+.loans-table td:nth-child(2),
+.loans-table td:nth-child(3) {
+  min-width: 145px;
+}
+
+.loans-table td strong {
+  display: block;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.loan-book-id,
+.loan-student-email {
+  display: block;
+  margin-top: 5px;
+  color: #92978e;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.loan-status {
+  display: inline-block;
+  padding: 6px 9px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.loan-status.pending {
+  background: #f8e9ce;
+  color: #a47b36;
+}
+
+.loan-status.approved {
+  background: #dfeddf;
+  color: #56775b;
+}
+
+.loan-status.rejected {
+  background: #f9e0e5;
+  color: #ae6878;
+}
+
+.loan-status.returned {
+  background: #e5e7f5;
+  color: #69719b;
+}
+
+.completed-label {
+  color: #92978e;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar-nav .nav-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.sidebar-nav .nav-item.active {
+  background: #6d896f;
+}
+
+@media (max-width: 1100px) {
+  .loans-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
