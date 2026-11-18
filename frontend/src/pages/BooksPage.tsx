@@ -10,7 +10,11 @@ import {
 import type { Book } from "../types/book";
 import "./BooksPage.css";
 
-function BooksPage() {
+interface BooksPageProps {
+  onNavigate: (page: "books" | "loans") => void;
+}
+
+function BooksPage({ onNavigate }: BooksPageProps) {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -147,10 +151,23 @@ function BooksPage() {
         <div className="sidebar-label">WORKSPACE</div>
 
         <nav className="sidebar-nav">
-          <div className="nav-item active">
+          <button
+            className="nav-item active"
+            type="button"
+            onClick={() => onNavigate("books")}
+          >
             <span>▦</span>
             Book Management
-          </div>
+          </button>
+
+          <button
+            className="nav-item"
+            type="button"
+            onClick={() => onNavigate("loans")}
+          >
+            <span>▤</span>
+            Loan Management
+          </button>
         </nav>
 
         <div className="sidebar-bottom">
