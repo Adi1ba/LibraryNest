@@ -1,14 +1,25 @@
 
 import type { Book, BookCreate, BookUpdate } from "../types/book";
+import { getAccessToken } from "./authService";
 
 const API_URL = "/api/books";
+
+const getAuthHeaders = (): HeadersInit => {
+  const token = getAccessToken();
+
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+};
 
 export const getBooks = async (search?: string): Promise<Book[]> => {
   const query = search?.trim()
     ? `?search=${encodeURIComponent(search.trim())}`
     : "";
 
-  const response = await fetch(`${API_URL}/${query}`);
+  const response = await fetch(`${API_URL}/${query}`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch books");
@@ -18,7 +29,9 @@ export const getBooks = async (search?: string): Promise<Book[]> => {
 };
 
 export const getBook = async (id: number): Promise<Book> => {
-  const response = await fetch(`${API_URL}/${id}`);
+  const response = await fetch(`${API_URL}/${id}`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Book not found");
@@ -30,7 +43,10 @@ export const getBook = async (id: number): Promise<Book> => {
 export const createBook = async (book: BookCreate): Promise<Book> => {
   const response = await fetch(`${API_URL}/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(book),
   });
 
@@ -47,7 +63,10 @@ export const updateBook = async (
 ): Promise<Book> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(book),
   });
 
@@ -61,6 +80,7 @@ export const updateBook = async (
 export const deleteBook = async (id: number): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: "DELETE",
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
