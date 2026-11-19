@@ -1,16 +1,11 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import models so SQLModel registers their database tables.
-from app.books.models import Book
-from app.loans.models import Loan
-
+from app.auth.router import router as auth_router
 from app.books.router import router as books_router
-from app.loans.router import router as loans_router
-
 from app.database import create_db_and_tables
-
+from app.loans.router import router as loans_router
 
 app = FastAPI(
     title="LibraryNest API",
@@ -36,6 +31,7 @@ create_db_and_tables()
 
 
 # Register API routers.
+app.include_router(auth_router)
 app.include_router(books_router)
 app.include_router(loans_router)
 
