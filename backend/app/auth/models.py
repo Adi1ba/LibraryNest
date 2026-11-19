@@ -23,6 +23,8 @@ class User(SQLModel, table=True):
 
     password_hash: str = Field(max_length=255)
 
-    role: str = Field(default="user", max_length=20)
+    role: str = Field(default="student", max_length=20)
+
+    is_active: bool = Field(default=True)
 
     created_at: datetime = Field(default_factory=utc_now)

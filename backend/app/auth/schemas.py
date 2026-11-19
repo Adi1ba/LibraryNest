@@ -1,6 +1,6 @@
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import EmailStr, StringConstraints
 from sqlmodel import SQLModel
@@ -30,6 +30,20 @@ class UserRead(SQLModel):
     email: str
     role: str
     created_at: datetime
+
+
+class AdminUserRead(SQLModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+
+class UserRoleUpdate(SQLModel):
+    role: Literal["student", "librarian", "admin"]
 
 
 class TokenResponse(SQLModel):

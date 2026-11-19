@@ -16,6 +16,12 @@ class Loan(SQLModel, table=True):
         index=True
     )
 
+    user_id: int | None = Field(
+        default=None,
+        foreign_key="user.id",
+        index=True,
+    )
+
     student_name: str = Field(max_length=150)
     student_email: str = Field(max_length=255)
 

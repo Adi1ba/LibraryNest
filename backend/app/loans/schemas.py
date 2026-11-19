@@ -1,21 +1,12 @@
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import EmailStr, StringConstraints
 from sqlmodel import Field, SQLModel
-
-
-StudentName = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=150)
-]
 
 
 class LoanCreate(SQLModel):
     book_id: int = Field(gt=0)
-    student_name: StudentName
-    student_email: EmailStr
 
 
 class LoanStatusUpdate(SQLModel):
@@ -25,6 +16,7 @@ class LoanStatusUpdate(SQLModel):
 class LoanRead(SQLModel):
     id: int
     book_id: int
+    user_id: int | None
     student_name: str
     student_email: str
     status: str
