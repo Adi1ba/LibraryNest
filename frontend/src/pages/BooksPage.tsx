@@ -8,13 +8,16 @@ import {
   updateBook,
 } from "../services/bookService";
 import type { Book } from "../types/book";
+import type { User } from "../types/auth";
 import "./BooksPage.css";
 
 interface BooksPageProps {
   onNavigate: (page: "books" | "loans") => void;
+  user: User;
+  onLogout: () => void;
 }
 
-function BooksPage({ onNavigate }: BooksPageProps) {
+function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -137,6 +140,12 @@ function BooksPage({ onNavigate }: BooksPageProps) {
     0
   );
 
+  const fullName = `${user.first_name} ${user.last_name}`.trim();
+  const initials =
+    `${user.first_name?.charAt(0) || ""}${user.last_name?.charAt(0) || ""}`.toUpperCase();
+  const displayRole =
+    user.role.charAt(0).toUpperCase() + user.role.slice(1);
+
   return (
     <div className="dashboard">
       <aside className="sidebar">
@@ -175,6 +184,27 @@ function BooksPage({ onNavigate }: BooksPageProps) {
             <span className="note-icon">✦</span>
             <p>Keep your library organized and up to date.</p>
           </div>
+
+          <div className="sidebar-profile">
+            <div className="sidebar-profile-avatar">
+              {initials || "U"}
+            </div>
+
+            <div className="sidebar-profile-info">
+              <strong>{fullName || "Library User"}</strong>
+              <span>{displayRole}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="sidebar-logout"
+            onClick={onLogout}
+          >
+            <span>↪</span>
+            Logout
+          </button>
+
           <span className="sidebar-version">LibraryNest · MVP</span>
         </div>
       </aside>
@@ -184,11 +214,6 @@ function BooksPage({ onNavigate }: BooksPageProps) {
           <div>
             <span className="breadcrumb">Workspace / Books</span>
             <h1>Book Management</h1>
-          </div>
-          <div className="topbar-right">
-            <span className="status-dot"></span>
-            <span>Library Admin</span>
-            <div className="avatar">A</div>
           </div>
         </header>
 

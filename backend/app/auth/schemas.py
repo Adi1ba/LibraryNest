@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from typing import Annotated
 
@@ -11,6 +12,8 @@ Password = Annotated[
 
 
 class UserCreate(SQLModel):
+    first_name: str
+    last_name: str
     email: EmailStr
     password: Password
 
@@ -22,6 +25,8 @@ class UserLogin(SQLModel):
 
 class UserRead(SQLModel):
     id: int
+    first_name: str
+    last_name: str
     email: str
     role: str
     created_at: datetime

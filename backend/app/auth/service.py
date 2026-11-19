@@ -1,3 +1,4 @@
+
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
@@ -28,10 +29,18 @@ def register_user(session: Session, user_data: UserCreate) -> UserRead:
         )
 
     user = User(
+        first_name=user_data.first_name.strip(),
+        last_name=user_data.last_name.strip(),
         email=normalized_email,
         password_hash=hash_password(user_data.password),
         role="user",
     )
+
+    if not user.first_name or not user.last_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="First name and last name are required.",
+        )
 
     try:
         session.add(user)
@@ -56,7 +65,9 @@ def authenticate_user(
 
     normalized_email = email.strip().lower()
 
-    user = session.exec(select(User).where(User.email == normalized_email)).first()
+    user = session.exec(
+        select(User).where(User.email == normalized_email)
+    ).first()
 
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(

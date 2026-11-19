@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
@@ -9,6 +10,10 @@ def utc_now() -> datetime:
 
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+
+    first_name: str = Field(max_length=100)
+
+    last_name: str = Field(max_length=100)
 
     email: str = Field(
         max_length=255,
