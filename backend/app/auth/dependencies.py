@@ -1,3 +1,4 @@
+
 from typing import Annotated
 
 import jwt
@@ -38,7 +39,7 @@ def get_current_user(
 
     user = session.get(User, user_id)
 
-    if user is None:
+    if user is None or not user.is_active:
         raise unauthorized_error
 
     if payload.get("role") != user.role:

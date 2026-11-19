@@ -14,7 +14,7 @@ from app.config import settings
 
 
 def register_user(session: Session, user_data: UserCreate) -> UserRead:
-    """Register a new user account."""
+    """Register a new student account."""
 
     normalized_email = str(user_data.email).strip().lower()
 
@@ -33,7 +33,8 @@ def register_user(session: Session, user_data: UserCreate) -> UserRead:
         last_name=user_data.last_name.strip(),
         email=normalized_email,
         password_hash=hash_password(user_data.password),
-        role="user",
+        role="student",
+        is_active=True,
     )
 
     if not user.first_name or not user.last_name:
@@ -69,7 +70,11 @@ def authenticate_user(
         select(User).where(User.email == normalized_email)
     ).first()
 
-    if not user or not verify_password(password, user.password_hash):
+    if (
+        not user
+        or not verify_password(password, user.password_hash)
+        or not user.is_active
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",

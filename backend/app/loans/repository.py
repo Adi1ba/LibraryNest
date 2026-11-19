@@ -17,6 +17,15 @@ def get_loans(session: Session) -> list[Loan]:
     return list(session.exec(statement).all())
 
 
+def get_loans_by_user(session: Session, user_id: int) -> list[Loan]:
+    statement = (
+        select(Loan)
+        .where(Loan.user_id == user_id)
+        .order_by(col(Loan.id).asc())
+    )
+    return list(session.exec(statement).all())
+
+
 def get_loan(session: Session, loan_id: int) -> Loan | None:
     return session.get(Loan, loan_id)
 

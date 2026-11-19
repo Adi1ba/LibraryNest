@@ -4,41 +4,79 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
+from app.auth.models import User
+from app.books.models import Book
 from app.loans import repository
 from app.loans.models import Loan
 from app.loans.schemas import LoanCreate, LoanStatusUpdate
 
 
-def create_loan(session: Session, loan_data: LoanCreate) -> Loan:
+def create_loan(
+    session: Session,
+    loan_data: LoanCreate,
+    current_user: User,
+) -> Loan:
     book = repository.get_book_for_update(session, loan_data.book_id)
 
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found."
+            detail="Book not found.",
+        )
+
+    if current_user.id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user account.",
         )
 
     loan = Loan(
         book_id=loan_data.book_id,
-        student_name=loan_data.student_name,
-        student_email=str(loan_data.student_email),
-        status="Pending"
+        user_id=current_user.id,
+        student_name=f"{current_user.first_name} {current_user.last_name}",
+        student_email=current_user.email,
+        status="Pending",
     )
 
     return repository.create_loan(session, loan)
 
 
-def get_loans(session: Session) -> list[Loan]:
+def get_loans(session: Session, current_user: User) -> list[Loan]:
+    if current_user.role == "student":
+        if current_user.id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user account.",
+            )
+
+        return repository.get_loans_by_user(
+            session,
+            current_user.id,
+        )
+
     return repository.get_loans(session)
 
 
-def get_loan(session: Session, loan_id: int) -> Loan:
+def get_loan(
+    session: Session,
+    loan_id: int,
+    current_user: User,
+) -> Loan:
     loan = repository.get_loan(session, loan_id)
 
     if not loan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Loan request not found."
+            detail="Loan request not found.",
+        )
+
+    if (
+        current_user.role == "student"
+        and loan.user_id != current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Loan request not found.",
         )
 
     return loan
@@ -47,19 +85,27 @@ def get_loan(session: Session, loan_id: int) -> Loan:
 def update_loan_status(
     session: Session,
     loan_id: int,
-    status_data: LoanStatusUpdate
+    status_data: LoanStatusUpdate,
 ) -> Loan:
-    loan = get_loan(session, loan_id)
+    loan = repository.get_loan(session, loan_id)
 
-    book = repository.get_book_for_update(session, loan.book_id)
+    if not loan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Loan request not found.",
+        )
+
+    book: Book | None = repository.get_book_for_update(
+        session,
+        loan.book_id,
+    )
 
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book associated with this loan was not found."
+            detail="Book associated with this loan was not found.",
         )
 
-    # Refresh the loan to check its latest database status.
     session.refresh(loan)
 
     new_status = status_data.status
@@ -70,7 +116,7 @@ def update_loan_status(
             if book.available_copies <= 0:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="No available copies of this book."
+                    detail="No available copies of this book.",
                 )
 
             book.available_copies -= 1
@@ -81,7 +127,7 @@ def update_loan_status(
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A pending loan can only be approved or rejected."
+                detail="A pending loan can only be approved or rejected.",
             )
 
     elif loan.status == "Approved":
@@ -90,7 +136,7 @@ def update_loan_status(
             if book.available_copies >= book.total_copies:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Book availability is already at its maximum."
+                    detail="Book availability is already at its maximum.",
                 )
 
             book.available_copies += 1
@@ -99,13 +145,13 @@ def update_loan_status(
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="An approved loan can only be marked as returned."
+                detail="An approved loan can only be marked as returned.",
             )
 
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This loan request has already been completed."
+            detail="This loan request has already been completed.",
         )
 
     loan.status = new_status
