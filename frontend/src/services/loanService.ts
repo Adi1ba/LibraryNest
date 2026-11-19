@@ -1,7 +1,16 @@
 
 import type { Loan, LoanCreate, LoanStatusUpdate } from "../types/loan";
+import { getAccessToken } from "./authService";
 
 const API_URL = "/api/loans";
+
+const getAuthHeaders = (): HeadersInit => {
+  const token = getAccessToken();
+
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+};
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -25,7 +34,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export const getLoans = async (): Promise<Loan[]> => {
-  const response = await fetch(`${API_URL}/`);
+  const response = await fetch(`${API_URL}/`, {
+    headers: getAuthHeaders(),
+  });
+
   return handleResponse<Loan[]>(response);
 };
 
@@ -36,6 +48,7 @@ export const createLoan = async (
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(loanData),
   });
@@ -51,6 +64,7 @@ export const updateLoanStatus = async (
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(statusData),
   });
