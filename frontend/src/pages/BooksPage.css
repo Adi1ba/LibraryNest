@@ -728,3 +728,76 @@ input {
     padding: 18px;
   }
 }
+
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 4px 10px;
+  margin-top: 12px;
+  border-top: 1px solid #e4e8e2;
+}
+
+.sidebar-profile-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: #829b83;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sidebar-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sidebar-profile-info strong {
+  color: #455849;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-profile-info span {
+  color: #829182;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.sidebar-logout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #718071;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-logout:hover {
+  background: #e8eee5;
+  color: #455849;
+}
+
+.sidebar-logout span {
+  font-size: 17px;
+}
+.sidebar-profile-info strong {
+  color: #ffffff !important;
+}
+
+.sidebar-profile-info span {
+  color: #ffffff !important;
+}
