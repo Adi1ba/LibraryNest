@@ -14,7 +14,7 @@ import "./BooksPage.css";
 import "./LoansPage.css";
 
 interface LoansPageProps {
-  onNavigate: (page: "books" | "loans") => void;
+  onNavigate: (page: "books" | "loans" | "users") => void;
   user: User;
   onLogout: () => void;
 }
@@ -26,10 +26,10 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
   const [bookId, setBookId] = useState("");
-  const [studentName, setStudentName] = useState("");
-  const [studentEmail, setStudentEmail] = useState("");
+
+  const isStudent = user.role === "student";
+  const isStaff = user.role === "librarian" || user.role === "admin";
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();
   const initials = `${user.first_name?.charAt(0) || ""}${user.last_name?.charAt(0) || ""}`.toUpperCase();
@@ -62,8 +62,6 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
 
   const resetForm = () => {
     setBookId("");
-    setStudentName("");
-    setStudentEmail("");
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -81,8 +79,6 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
 
       await createLoan({
         book_id: Number(bookId),
-        student_name: studentName.trim(),
-        student_email: studentEmail.trim(),
       });
 
       setSuccess("Loan request submitted successfully.");
@@ -177,12 +173,27 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
             <span>▤</span>
             Loan Management
           </button>
+
+          {user.role === "admin" && (
+            <button
+              className="nav-item"
+              type="button"
+              onClick={() => onNavigate("users")}
+            >
+              <span>♙</span>
+              User Management
+            </button>
+          )}
         </nav>
 
         <div className="sidebar-bottom">
           <div className="sidebar-note">
             <span className="note-icon">✦</span>
-            <p>Keep track of loan requests and book returns.</p>
+            <p>
+              {isStudent
+                ? "Request books and track your loan activity."
+                : "Keep track of loan requests and book returns."}
+            </p>
           </div>
 
           <div className="sidebar-profile">
@@ -220,13 +231,17 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
           <div className="welcome-section">
             <div>
               <p className="eyebrow">LOAN ACTIVITY AT A GLANCE</p>
-              <h2>Manage book loans</h2>
+              <h2>{isStudent ? "My book loans" : "Manage book loans"}</h2>
               <p className="welcome-description">
-                Review requests, approve loans, and keep track of returned books.
+                {isStudent
+                  ? "Request books and track the status of your requests."
+                  : "Review requests, approve loans, and keep track of returned books."}
               </p>
             </div>
 
-            <div className="date-label">LOAN RECORDS</div>
+            <div className="date-label">
+              {isStudent ? "MY LOAN RECORDS" : "LOAN RECORDS"}
+            </div>
           </div>
 
           <section className="stats-grid">
@@ -235,7 +250,7 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
               <div>
                 <p>Total Requests</p>
                 <h3>{loans.length}</h3>
-                <span>All loan records</span>
+                <span>{isStudent ? "Your loan requests" : "All loan records"}</span>
               </div>
             </div>
 
@@ -262,78 +277,57 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
           {success && <div className="alert success-alert">{success}</div>}
 
           <section className="content-grid loans-content-grid">
-            <div className="panel form-panel">
-              <div className="panel-heading">
-                <div>
-                  <span className="panel-kicker">NEW REQUEST</span>
-                  <h3>Create a loan request</h3>
+            {isStudent && (
+              <div className="panel form-panel">
+                <div className="panel-heading">
+                  <div>
+                    <span className="panel-kicker">NEW REQUEST</span>
+                    <h3>Request a book</h3>
+                  </div>
+                  <span className="panel-heading-icon">＋</span>
                 </div>
-                <span className="panel-heading-icon">＋</span>
-              </div>
 
-              <form onSubmit={handleSubmit} className="book-form">
-                <div className="form-field">
-                  <label htmlFor="loan-book">Select book</label>
-                  <select
-                    id="loan-book"
-                    value={bookId}
-                    onChange={(event) => setBookId(event.target.value)}
-                    required
+                <form onSubmit={handleSubmit} className="book-form">
+                  <div className="form-field">
+                    <label htmlFor="loan-book">Select book</label>
+                    <select
+                      id="loan-book"
+                      value={bookId}
+                      onChange={(event) => setBookId(event.target.value)}
+                      required
+                    >
+                      <option value="">Choose a book</option>
+                      {books.map((book) => (
+                        <option
+                          key={book.id}
+                          value={book.id}
+                          disabled={book.available_copies <= 0}
+                        >
+                          {book.title} — {book.available_copies} available
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={submitting}
                   >
-                    <option value="">Choose a book</option>
-                    {books.map((book) => (
-                      <option
-                        key={book.id}
-                        value={book.id}
-                        disabled={book.available_copies <= 0}
-                      >
-                        {book.title} — {book.available_copies} available
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="student-name">Student name</label>
-                  <input
-                    id="student-name"
-                    type="text"
-                    placeholder="Enter student name"
-                    value={studentName}
-                    onChange={(event) => setStudentName(event.target.value)}
-                    maxLength={150}
-                    required
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="student-email">Student email</label>
-                  <input
-                    id="student-email"
-                    type="email"
-                    placeholder="student@example.com"
-                    value={studentEmail}
-                    onChange={(event) => setStudentEmail(event.target.value)}
-                    required
-                  />
-                </div>
-
-                <button
-                  className="primary-button"
-                  type="submit"
-                  disabled={submitting}
-                >
-                  {submitting ? "Submitting..." : "＋ Submit Request"}
-                </button>
-              </form>
-            </div>
+                    {submitting ? "Submitting..." : "＋ Submit Request"}
+                  </button>
+                </form>
+              </div>
+            )}
 
             <div className="panel table-panel">
               <div className="table-heading">
                 <div>
                   <span className="panel-kicker">REQUEST HISTORY</span>
-                  <h3>All loan requests</h3>
-                  <p>{loans.length} requests in your library</p>
+                  <h3>{isStudent ? "My loan requests" : "All loan requests"}</h3>
+                  <p>
+                    {loans.length} {isStudent ? "requests" : "requests in your library"}
+                  </p>
                 </div>
 
                 <button
@@ -352,7 +346,9 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
                   <div className="empty-icon">▤</div>
                   <h4>No loan requests yet</h4>
                   <p>
-                    Submit a new request using the form to get started.
+                    {isStudent
+                      ? "Submit a book request to get started."
+                      : "Student loan requests will appear here."}
                   </p>
                 </div>
               ) : (
@@ -362,10 +358,10 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
                       <tr>
                         <th>ID</th>
                         <th>BOOK</th>
-                        <th>STUDENT</th>
+                        {isStaff && <th>STUDENT</th>}
                         <th>REQUESTED AT</th>
                         <th>STATUS</th>
-                        <th>ACTIONS</th>
+                        {isStaff && <th>ACTIONS</th>}
                       </tr>
                     </thead>
 
@@ -381,12 +377,14 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
                             </span>
                           </td>
 
-                          <td>
-                            <strong>{loan.student_name}</strong>
-                            <span className="loan-student-email">
-                              {loan.student_email}
-                            </span>
-                          </td>
+                          {isStaff && (
+                            <td>
+                              <strong>{loan.student_name}</strong>
+                              <span className="loan-student-email">
+                                {loan.student_email}
+                              </span>
+                            </td>
+                          )}
 
                           <td>{formatDate(loan.requested_at)}</td>
 
@@ -398,52 +396,54 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
                             </span>
                           </td>
 
-                          <td>
-                            <div className="action-buttons">
-                              {loan.status === "Pending" && (
-                                <>
+                          {isStaff && (
+                            <td>
+                              <div className="action-buttons">
+                                {loan.status === "Pending" && (
+                                  <>
+                                    <button
+                                      className="edit-button"
+                                      type="button"
+                                      onClick={() =>
+                                        handleStatusUpdate(loan, "Approved")
+                                      }
+                                    >
+                                      Approve
+                                    </button>
+
+                                    <button
+                                      className="delete-button"
+                                      type="button"
+                                      onClick={() =>
+                                        handleStatusUpdate(loan, "Rejected")
+                                      }
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+
+                                {loan.status === "Approved" && (
                                   <button
                                     className="edit-button"
                                     type="button"
                                     onClick={() =>
-                                      handleStatusUpdate(loan, "Approved")
+                                      handleStatusUpdate(loan, "Returned")
                                     }
                                   >
-                                    Approve
+                                    Return
                                   </button>
+                                )}
 
-                                  <button
-                                    className="delete-button"
-                                    type="button"
-                                    onClick={() =>
-                                      handleStatusUpdate(loan, "Rejected")
-                                    }
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-
-                              {loan.status === "Approved" && (
-                                <button
-                                  className="edit-button"
-                                  type="button"
-                                  onClick={() =>
-                                    handleStatusUpdate(loan, "Returned")
-                                  }
-                                >
-                                  Return
-                                </button>
-                              )}
-
-                              {(loan.status === "Rejected" ||
-                                loan.status === "Returned") && (
-                                <span className="completed-label">
-                                  Completed
-                                </span>
-                              )}
-                            </div>
-                          </td>
+                                {(loan.status === "Rejected" ||
+                                  loan.status === "Returned") && (
+                                  <span className="completed-label">
+                                    Completed
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
