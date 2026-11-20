@@ -1,7 +1,7 @@
-
 export interface Loan {
   id: number;
   book_id: number;
+  user_id: number | null;
   student_name: string;
   student_email: string;
   status: "Pending" | "Approved" | "Rejected" | "Returned";
@@ -11,8 +11,6 @@ export interface Loan {
 
 export interface LoanCreate {
   book_id: number;
-  student_name: string;
-  student_email: string;
 }
 
 export interface LoanStatusUpdate {

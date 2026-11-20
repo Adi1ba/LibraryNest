@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import BooksPage from "./pages/BooksPage";
 import LoansPage from "./pages/LoansPage";
+import UserManagementPage from "./pages/UserManagementPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import {
@@ -11,7 +12,7 @@ import {
 } from "./services/authService";
 import type { User } from "./types/auth";
 
-type Page = "books" | "loans" | "login" | "register";
+type Page = "books" | "loans" | "users" | "login" | "register";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>("login");
@@ -67,6 +68,21 @@ function App() {
       <LoginPage
         onLoginSuccess={handleLoginSuccess}
         onNavigate={setCurrentPage}
+      />
+    );
+  }
+
+  if (currentPage === "users") {
+    if (user.role !== "admin") {
+      setCurrentPage("books");
+      return <p>Redirecting...</p>;
+    }
+
+    return (
+      <UserManagementPage
+        user={user}
+        onNavigate={setCurrentPage}
+        onLogout={handleLogout}
       />
     );
   }

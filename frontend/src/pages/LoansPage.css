@@ -1,24 +1,195 @@
 
+/* =========================================
+   LIBRARYNEST - LOAN MANAGEMENT PAGE
+   Theme: Sage Green + Dusty Pink
+========================================= */
+
+:root {
+  --loan-pink: #f5d5df;
+  --loan-pink-light: #fff8fa;
+  --loan-pink-dark: #a66f80;
+
+  --loan-sage: #829b83;
+  --loan-sage-dark: #607b63;
+  --loan-sage-light: #e3eee1;
+
+  --loan-background: #f9edf0;
+  --loan-text: #455849;
+  --loan-border: #efdce2;
+}
+
+/* =========================================
+   MAIN LAYOUT
+========================================= */
+
 .loans-content-grid {
-  grid-template-columns: minmax(260px, 0.65fr) minmax(0, 2fr);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 100%;
+  gap: 22px;
+  align-items: start;
+}
+
+.loans-content-grid .panel {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.loans-content-grid .form-panel,
+.loans-content-grid .table-panel {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.loans-content-grid .table-panel {
+  overflow: hidden;
+}
+
+/* =========================================
+   SIDEBAR NAVIGATION
+========================================= */
+
+.sidebar-nav .nav-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.sidebar-nav .nav-item.active {
+  background: #6d896f;
+  color: #ffffff;
+}
+
+/* =========================================
+   REQUEST FORM PANEL
+========================================= */
+
+.form-panel {
+  background: #ffffff;
+  border: 1px solid var(--loan-border);
+  border-radius: 15px;
+  padding: 22px;
+  box-shadow: 0 5px 18px rgba(91, 111, 91, 0.05);
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 22px;
+}
+
+.panel-kicker {
+  display: block;
+  color: var(--loan-sage-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  margin-bottom: 7px;
+}
+
+.panel-heading h3,
+.table-heading h3 {
+  color: var(--loan-text);
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.panel-heading-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--loan-pink-light);
+  color: var(--loan-pink-dark);
+  font-size: 23px;
+}
+
+/* =========================================
+   FORM FIELDS
+========================================= */
+
+.book-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.form-field label {
+  color: var(--loan-text);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .form-field select {
   width: 100%;
-  min-height: 43px;
-  padding: 0 12px;
+  min-height: 45px;
+  padding: 0 13px;
   border: 1px solid #e8cfd7;
-  border-radius: 8px;
+  border-radius: 9px;
   outline: none;
   background: #fffafb;
-  color: var(--text);
+  color: var(--loan-text);
   font-family: inherit;
   font-size: 12px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-field select:focus {
   border-color: #91ad91;
   box-shadow: 0 0 0 3px rgba(145, 173, 145, 0.18);
+}
+
+.form-field select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-field select option {
+  color: var(--loan-text);
+  background: #ffffff;
+}
+
+/* =========================================
+   PRIMARY BUTTON
+========================================= */
+
+.primary-button {
+  min-height: 43px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 9px;
+  background: var(--loan-sage);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.primary-button:hover {
+  background: var(--loan-sage-dark);
+  transform: translateY(-1px);
 }
 
 .primary-button:disabled {
@@ -27,37 +198,155 @@
   transform: none;
 }
 
+/* =========================================
+   ALERT MESSAGES
+========================================= */
+
+.alert {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 16px;
+  margin: 0 0 18px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.error-alert {
+  background: #fff0f1;
+  border: 1px solid #f1cbd2;
+  color: #a64e61;
+}
+
+.success-alert {
+  background: #eaf3e8;
+  border: 1px solid #cbdcc9;
+  color: #55775a;
+}
+
+/* =========================================
+   TABLE PANEL
+========================================= */
+
+.table-panel {
+  background: #ffffff;
+  border: 1px solid var(--loan-border);
+  border-radius: 15px;
+  padding: 22px;
+  box-shadow: 0 5px 18px rgba(91, 111, 91, 0.05);
+  min-width: 0;
+}
+
+.table-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.table-heading h3 {
+  margin-bottom: 6px;
+}
+
+.table-heading p {
+  color: #92978e;
+  font-size: 11px;
+  margin: 0;
+}
+
+/* =========================================
+   REFRESH BUTTON
+========================================= */
+
 .refresh-button {
   min-height: 36px;
-  padding: 0 13px;
+  padding: 0 14px;
   border: 1px solid #d1e2d0;
   border-radius: 8px;
   background: #e7f0e5;
   color: #5e7c61;
+  font-family: inherit;
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .refresh-button:hover {
   background: #d6e8d5;
 }
 
-.loans-table td {
-  white-space: normal;
-  min-width: 85px;
+/* =========================================
+   TABLE SCROLL
+========================================= */
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 9px;
 }
 
-.loans-table td:nth-child(2),
-.loans-table td:nth-child(3) {
-  min-width: 145px;
+/* =========================================
+   LOAN TABLE
+========================================= */
+
+.loans-table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.loans-table thead {
+  background: var(--loan-sage-light);
+}
+
+.loans-table th {
+  padding: 15px 14px;
+  color: var(--loan-sage-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.loans-table td {
+  padding: 15px 14px;
+  color: var(--loan-text);
+  font-size: 11px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1e8e9;
+  white-space: normal;
+  min-width: 85px;
+  overflow-wrap: anywhere;
+}
+
+.loans-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.loans-table tbody tr:hover {
+  background: #fff8fa;
+}
+
+.loans-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .loans-table td strong {
   display: block;
-  color: var(--text);
+  color: var(--loan-text);
   font-size: 11px;
+  font-weight: 800;
 }
+
+/* =========================================
+   BOOK AND STUDENT DETAILS
+========================================= */
 
 .loan-book-id,
 .loan-student-email {
@@ -68,12 +357,17 @@
   overflow-wrap: anywhere;
 }
 
+/* =========================================
+   LOAN STATUS BADGES
+========================================= */
+
 .loan-status {
   display: inline-block;
-  padding: 6px 9px;
+  padding: 6px 10px;
   border-radius: 20px;
   font-size: 9px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .loan-status.pending {
@@ -96,27 +390,157 @@
   color: #69719b;
 }
 
+/* =========================================
+   ACTION BUTTONS
+========================================= */
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.action-buttons button {
+  min-height: 29px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.action-buttons button:hover {
+  transform: translateY(-1px);
+}
+
+.action-buttons .edit-button {
+  background: #e3eee1;
+  color: #56775b;
+}
+
+.action-buttons .edit-button:hover {
+  background: #d1e3cf;
+}
+
+.action-buttons .delete-button {
+  background: #f9e0e5;
+  color: #ae6878;
+}
+
+.action-buttons .delete-button:hover {
+  background: #f2cbd5;
+}
+
 .completed-label {
+  display: inline-block;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: #f5f3f1;
   color: #92978e;
   font-size: 10px;
   font-weight: 700;
 }
 
-.sidebar-nav .nav-item {
+/* =========================================
+   EMPTY AND LOADING STATES
+========================================= */
+
+.empty-state {
   width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 25px;
+  box-sizing: border-box;
 }
 
-.sidebar-nav .nav-item.active {
-  background: #6d896f;
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: var(--loan-pink-light);
+  color: var(--loan-pink-dark);
+  font-size: 22px;
 }
+
+.empty-state h4 {
+  margin: 0 0 7px;
+  color: var(--loan-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.empty-state p {
+  margin: 0;
+  color: #92978e;
+  font-size: 11px;
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+========================================= */
 
 @media (max-width: 1100px) {
   .loans-content-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .loans-content-grid .panel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .loans-content-grid {
+    gap: 16px;
+  }
+
+  .form-panel,
+  .table-panel {
+    padding: 16px;
+  }
+
+  .table-heading {
+    align-items: flex-start;
+  }
+
+  .loans-table {
+    min-width: 600px;
+  }
+
+  .loans-table th,
+  .loans-table td {
+    padding: 12px 10px;
+  }
+
+  .action-buttons {
+    min-width: 95px;
+  }
+}
+
+@media (max-width: 450px) {
+  .panel-heading h3,
+  .table-heading h3 {
+    font-size: 16px;
+  }
+
+  .refresh-button {
+    min-height: 33px;
+    padding: 0 10px;
+  }
+
+  .form-field select {
+    font-size: 11px;
   }
 }

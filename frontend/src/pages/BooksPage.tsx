@@ -12,7 +12,7 @@ import type { User } from "../types/auth";
 import "./BooksPage.css";
 
 interface BooksPageProps {
-  onNavigate: (page: "books" | "loans") => void;
+  onNavigate: (page: "books" | "loans" | "users") => void;
   user: User;
   onLogout: () => void;
 }
@@ -30,6 +30,8 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+
+  const isStaff = user.role === "librarian" || user.role === "admin";
 
   const fetchBooks = async () => {
     try {
@@ -177,12 +179,27 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
             <span>▤</span>
             Loan Management
           </button>
+
+          {user.role === "admin" && (
+            <button
+              className="nav-item"
+              type="button"
+              onClick={() => onNavigate("users")}
+            >
+              <span>♙</span>
+              User Management
+            </button>
+          )}
         </nav>
 
         <div className="sidebar-bottom">
           <div className="sidebar-note">
             <span className="note-icon">✦</span>
-            <p>Keep your library organized and up to date.</p>
+            <p>
+              {isStaff
+                ? "Keep your library organized and up to date."
+                : "Explore the library collection and check book availability."}
+            </p>
           </div>
 
           <div className="sidebar-profile">
@@ -221,9 +238,11 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
           <div className="welcome-section">
             <div>
               <p className="eyebrow">YOUR LIBRARY AT A GLANCE</p>
-              <h2>Manage your collection</h2>
+              <h2>{isStaff ? "Manage your collection" : "Explore the collection"}</h2>
               <p className="welcome-description">
-                Add new books, update existing records, and keep track of your collection.
+                {isStaff
+                  ? "Add new books, update existing records, and keep track of your collection."
+                  : "Search books and check their availability in the library."}
               </p>
             </div>
             <div className="date-label">BOOK INVENTORY</div>
@@ -262,84 +281,86 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
           {success && <div className="alert success-alert">{success}</div>}
 
           <section className="content-grid">
-            <div className="panel form-panel">
-              <div className="panel-heading">
-                <div>
-                  <span className="panel-kicker">
-                    {editingId !== null ? "EDIT RECORD" : "NEW ENTRY"}
-                  </span>
-                  <h3>{editingId !== null ? "Update book" : "Add a new book"}</h3>
-                </div>
-                <span className="panel-heading-icon">＋</span>
-              </div>
-
-              <form onSubmit={handleSubmit} className="book-form">
-                <div className="form-field">
-                  <label htmlFor="book-title">Book title</label>
-                  <input
-                    id="book-title"
-                    type="text"
-                    placeholder="e.g. The Alchemist"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    maxLength={200}
-                    required
-                  />
+            {isStaff && (
+              <div className="panel form-panel">
+                <div className="panel-heading">
+                  <div>
+                    <span className="panel-kicker">
+                      {editingId !== null ? "EDIT RECORD" : "NEW ENTRY"}
+                    </span>
+                    <h3>{editingId !== null ? "Update book" : "Add a new book"}</h3>
+                  </div>
+                  <span className="panel-heading-icon">＋</span>
                 </div>
 
-                <div className="form-field">
-                  <label htmlFor="book-author">Author</label>
-                  <input
-                    id="book-author"
-                    type="text"
-                    placeholder="e.g. Paulo Coelho"
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    maxLength={150}
-                    required
-                  />
-                </div>
+                <form onSubmit={handleSubmit} className="book-form">
+                  <div className="form-field">
+                    <label htmlFor="book-title">Book title</label>
+                    <input
+                      id="book-title"
+                      type="text"
+                      placeholder="e.g. The Alchemist"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      maxLength={200}
+                      required
+                    />
+                  </div>
 
-                <div className="form-field">
-                  <label htmlFor="book-isbn">ISBN</label>
-                  <input
-                    id="book-isbn"
-                    type="text"
-                    placeholder="Enter ISBN number"
-                    value={isbn}
-                    onChange={(e) => setIsbn(e.target.value)}
-                    maxLength={20}
-                    required
-                  />
-                </div>
+                  <div className="form-field">
+                    <label htmlFor="book-author">Author</label>
+                    <input
+                      id="book-author"
+                      type="text"
+                      placeholder="e.g. Paulo Coelho"
+                      value={author}
+                      onChange={(e) => setAuthor(e.target.value)}
+                      maxLength={150}
+                      required
+                    />
+                  </div>
 
-                <div className="form-field">
-                  <label htmlFor="book-copies">Total copies</label>
-                  <input
-                    id="book-copies"
-                    type="number"
-                    min="0"
-                    value={totalCopies}
-                    onChange={(e) => setTotalCopies(Number(e.target.value))}
-                    required
-                  />
-                </div>
+                  <div className="form-field">
+                    <label htmlFor="book-isbn">ISBN</label>
+                    <input
+                      id="book-isbn"
+                      type="text"
+                      placeholder="Enter ISBN number"
+                      value={isbn}
+                      onChange={(e) => setIsbn(e.target.value)}
+                      maxLength={20}
+                      required
+                    />
+                  </div>
 
-                <button className="primary-button" type="submit">
-                  {editingId !== null ? "Save Changes" : "＋ Add Book"}
-                </button>
+                  <div className="form-field">
+                    <label htmlFor="book-copies">Total copies</label>
+                    <input
+                      id="book-copies"
+                      type="number"
+                      min="0"
+                      value={totalCopies}
+                      onChange={(e) => setTotalCopies(Number(e.target.value))}
+                      required
+                    />
+                  </div>
 
-                {editingId !== null && (
-                  <button
-                    className="cancel-button"
-                    type="button"
-                    onClick={resetForm}
-                  >
-                    Cancel Editing
+                  <button className="primary-button" type="submit">
+                    {editingId !== null ? "Save Changes" : "＋ Add Book"}
                   </button>
-                )}
-              </form>
-            </div>
+
+                  {editingId !== null && (
+                    <button
+                      className="cancel-button"
+                      type="button"
+                      onClick={resetForm}
+                    >
+                      Cancel Editing
+                    </button>
+                  )}
+                </form>
+              </div>
+            )}
 
             <div className="panel table-panel">
               <div className="table-heading">
@@ -369,7 +390,9 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                   <p>
                     {search
                       ? "Try searching with another title, author, or ISBN."
-                      : "Add your first book using the form to get started."}
+                      : isStaff
+                        ? "Add your first book using the form to get started."
+                        : "There are currently no books in the collection."}
                   </p>
                 </div>
               ) : (
@@ -382,7 +405,7 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                         <th>TOTAL COPIES</th>
                         <th>AVAILABLE COPIES</th>
                         <th>STATUS</th>
-                        <th>ACTIONS</th>
+                        {isStaff && <th>ACTIONS</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -414,24 +437,26 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                                 {isAvailable ? "Available" : "Unavailable"}
                               </span>
                             </td>
-                            <td>
-                              <div className="action-buttons">
-                                <button
-                                  className="edit-button"
-                                  type="button"
-                                  onClick={() => handleEdit(book)}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  className="delete-button"
-                                  type="button"
-                                  onClick={() => handleDelete(book)}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
+                            {isStaff && (
+                              <td>
+                                <div className="action-buttons">
+                                  <button
+                                    className="edit-button"
+                                    type="button"
+                                    onClick={() => handleEdit(book)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="delete-button"
+                                    type="button"
+                                    onClick={() => handleDelete(book)}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
