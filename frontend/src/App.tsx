@@ -8,11 +8,50 @@ import RegisterPage from "./pages/RegisterPage";
 import {
   getAccessToken,
   getCurrentUser,
+  refreshAccessToken,
   logoutUser,
 } from "./services/authService";
 import type { User } from "./types/auth";
 
 type Page = "books" | "loans" | "users" | "login" | "register";
+
+// Prevent duplicate session restoration requests in React StrictMode.
+let sessionRestorePromise: Promise<User | null> | null = null;
+
+async function restoreSession(): Promise<User | null> {
+  if (!sessionRestorePromise) {
+    sessionRestorePromise = (async () => {
+      try {
+        // First, try the existing access token.
+        if (getAccessToken()) {
+          try {
+            return await getCurrentUser();
+          } catch {
+            // Access token may have expired.
+            // Try refreshing it using the HttpOnly cookie.
+          }
+        }
+
+        // Restore the session or obtain a new access token.
+        const tokenResponse = await refreshAccessToken();
+        return tokenResponse.user;
+      } catch {
+        // No valid session could be restored.
+        try {
+          await logoutUser();
+        } catch {
+          // Clear the local token even if the server is unavailable.
+        }
+
+        return null;
+      }
+    })().finally(() => {
+      sessionRestorePromise = null;
+    });
+  }
+
+  return sessionRestorePromise;
+}
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>("login");
@@ -20,28 +59,31 @@ function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const checkAuthentication = async () => {
-      const token = getAccessToken();
+    let isMounted = true;
 
-      if (!token) {
-        setCheckingAuth(false);
+    const checkAuthentication = async () => {
+      const currentUser = await restoreSession();
+
+      if (!isMounted) {
         return;
       }
 
-      try {
-        const currentUser = await getCurrentUser();
+      if (currentUser) {
         setUser(currentUser);
         setCurrentPage("books");
-      } catch {
-        logoutUser();
+      } else {
         setUser(null);
         setCurrentPage("login");
-      } finally {
-        setCheckingAuth(false);
       }
+
+      setCheckingAuth(false);
     };
 
     checkAuthentication();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleLoginSuccess = (loggedInUser: User) => {
@@ -49,10 +91,15 @@ function App() {
     setCurrentPage("books");
   };
 
-  const handleLogout = () => {
-    logoutUser();
-    setUser(null);
-    setCurrentPage("login");
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch {
+      // The frontend should still log out if the server is unavailable.
+    } finally {
+      setUser(null);
+      setCurrentPage("login");
+    }
   };
 
   if (checkingAuth) {
