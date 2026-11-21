@@ -28,3 +28,28 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
 
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class RefreshSession(SQLModel, table=True):
+    """Store a user's hashed refresh token and session status."""
+
+    id: int | None = Field(default=None, primary_key=True)
+
+    user_id: int = Field(
+        foreign_key="user.id",
+        index=True,
+    )
+
+    token_hash: str = Field(
+        max_length=64,
+        unique=True,
+        index=True,
+    )
+
+    expires_at: datetime
+
+    revoked_at: datetime | None = Field(default=None)
+
+    created_at: datetime = Field(default_factory=utc_now)
+
+    last_used_at: datetime | None = Field(default=None)

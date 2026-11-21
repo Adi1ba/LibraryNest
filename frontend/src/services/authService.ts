@@ -26,6 +26,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+function saveAccessToken(data: TokenResponse): void {
+  localStorage.setItem(TOKEN_KEY, data.access_token);
+}
+
 export const registerUser = async (
   userData: RegisterData
 ): Promise<User> => {
@@ -48,12 +52,26 @@ export const loginUser = async (
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify(loginData),
   });
 
   const data = await handleResponse<TokenResponse>(response);
 
-  localStorage.setItem(TOKEN_KEY, data.access_token);
+  saveAccessToken(data);
+
+  return data;
+};
+
+export const refreshAccessToken = async (): Promise<TokenResponse> => {
+  const response = await fetch(`${API_URL}/refresh`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  const data = await handleResponse<TokenResponse>(response);
+
+  saveAccessToken(data);
 
   return data;
 };
@@ -78,6 +96,13 @@ export const getAccessToken = (): string | null => {
   return localStorage.getItem(TOKEN_KEY);
 };
 
-export const logoutUser = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
+export const logoutUser = async (): Promise<void> => {
+  try {
+    await fetch(`${API_URL}/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } finally {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 };

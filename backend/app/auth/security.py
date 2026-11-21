@@ -1,5 +1,7 @@
+
 import hashlib
 import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -38,7 +40,9 @@ def create_access_token(user_id: int, role: str) -> str:
     """Create a signed JWT access token."""
     now = datetime.now(timezone.utc)
 
-    expires_at = now + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    expires_at = now + timedelta(
+        minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+    )
 
     payload = {
         "sub": str(user_id),
@@ -60,4 +64,22 @@ def decode_access_token(token: str) -> dict:
         token,
         settings.JWT_SECRET_KEY,
         algorithms=[ALGORITHM],
+    )
+
+
+def create_refresh_token() -> str:
+    """Generate a cryptographically secure random refresh token."""
+    return secrets.token_urlsafe(64)
+
+
+def hash_refresh_token(token: str) -> str:
+    """Return the SHA-256 hash of a refresh token."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def verify_refresh_token(token: str, stored_hash: str) -> bool:
+    """Compare a refresh token with its stored hash securely."""
+    return hmac.compare_digest(
+        hash_refresh_token(token),
+        stored_hash,
     )
