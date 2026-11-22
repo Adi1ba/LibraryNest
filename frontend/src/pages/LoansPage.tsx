@@ -14,7 +14,9 @@ import "./BooksPage.css";
 import "./LoansPage.css";
 
 interface LoansPageProps {
-  onNavigate: (page: "books" | "loans" | "users" | "profile") => void;
+  onNavigate: (
+    page: "books" | "loans" | "users" | "profile" | "groups"
+  ) => void;
   user: User;
   onLogout: () => void;
 }
@@ -172,6 +174,15 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
           >
             <span>▤</span>
             Loan Management
+          </button>
+
+          <button
+            className="nav-item"
+            type="button"
+            onClick={() => onNavigate("groups")}
+          >
+            <span>♧</span>
+            Reading Groups
           </button>
 
           {user.role === "admin" && (
