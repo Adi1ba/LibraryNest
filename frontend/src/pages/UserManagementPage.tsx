@@ -6,12 +6,11 @@ import {
   getUsers,
   updateUserRole,
 } from "../services/userService";
-import { logoutUser } from "../services/authService";
 import "./UserManagementPage.css";
 
 interface UserManagementPageProps {
   user: User;
-  onNavigate: (page: "books" | "loans" | "users") => void;
+  onNavigate: (page: "books" | "loans" | "users" | "profile") => void;
   onLogout: () => void;
 }
 
@@ -90,11 +89,6 @@ const UserManagementPage = ({
     }
   };
 
-  const handleLogout = () => {
-    logoutUser();
-    onLogout();
-  };
-
   if (user.role !== "admin") {
     return (
       <div className="um-access-denied">
@@ -143,6 +137,9 @@ const UserManagementPage = ({
           <button className="active" onClick={() => onNavigate("users")}>
             <span>♙</span> User Management
           </button>
+          <button onClick={() => onNavigate("profile")}>
+            <span>◉</span> My Profile
+          </button>
         </nav>
 
         <div className="um-sidebar-bottom">
@@ -155,7 +152,7 @@ const UserManagementPage = ({
               <span>{user.role}</span>
             </div>
           </div>
-          <button className="um-logout" onClick={handleLogout}>
+          <button className="um-logout" onClick={onLogout}>
             ↪ Logout
           </button>
         </div>

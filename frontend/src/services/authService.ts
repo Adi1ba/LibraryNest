@@ -1,6 +1,7 @@
-
 import type {
   LoginData,
+  PasswordChangeData,
+  ProfileUpdateData,
   RegisterData,
   TokenResponse,
   User,
@@ -24,6 +25,19 @@ async function handleResponse<T>(response: Response): Promise<T> {
   }
 
   return response.json();
+}
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  if (!token) {
+    throw new Error("You are not logged in.");
+  }
+
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
 }
 
 function saveAccessToken(data: TokenResponse): void {
@@ -90,6 +104,30 @@ export const getCurrentUser = async (): Promise<User> => {
   });
 
   return handleResponse<User>(response);
+};
+
+export const updateMyProfile = async (
+  profileData: ProfileUpdateData
+): Promise<User> => {
+  const response = await fetch(`${API_URL}/me`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(profileData),
+  });
+
+  return handleResponse<User>(response);
+};
+
+export const changePassword = async (
+  passwordData: PasswordChangeData
+): Promise<{ message: string }> => {
+  const response = await fetch(`${API_URL}/change-password`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(passwordData),
+  });
+
+  return handleResponse<{ message: string }>(response);
 };
 
 export const getAccessToken = (): string | null => {

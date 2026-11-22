@@ -1,15 +1,23 @@
-
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, HTTPException, Response, status
 
 from app.auth.dependencies import CurrentUser
-from app.auth.schemas import TokenResponse, UserCreate, UserLogin, UserRead
+from app.auth.schemas import (
+    PasswordChange,
+    ProfileUpdate,
+    TokenResponse,
+    UserCreate,
+    UserLogin,
+    UserRead,
+)
 from app.auth.service import (
     authenticate_user,
+    change_user_password,
     refresh_user_session,
     register_user,
     revoke_refresh_session,
+    update_my_profile,
 )
 from app.config import settings
 from app.database import SessionDep
@@ -124,7 +132,6 @@ def logout(
     ] = None,
 ):
     revoke_refresh_session(session, refresh_token)
-
     clear_refresh_cookie(response)
 
     return {"message": "Logged out successfully."}
@@ -138,3 +145,39 @@ def get_my_profile(
     current_user: CurrentUser,
 ):
     return current_user
+
+
+@router.patch(
+    "/me",
+    response_model=UserRead,
+)
+def update_profile(
+    profile_data: ProfileUpdate,
+    current_user: CurrentUser,
+    session: SessionDep,
+):
+    return update_my_profile(
+        session,
+        current_user,
+        profile_data,
+    )
+
+
+@router.post("/change-password")
+def change_password(
+    password_data: PasswordChange,
+    current_user: CurrentUser,
+    session: SessionDep,
+):
+    change_user_password(
+        session,
+        current_user,
+        password_data,
+    )
+
+    return {
+        "message": (
+            "Password changed successfully. "
+            "Please log in again on your devices."
+        )
+    }

@@ -14,7 +14,7 @@ import "./BooksPage.css";
 import "./LoansPage.css";
 
 interface LoansPageProps {
-  onNavigate: (page: "books" | "loans" | "users") => void;
+  onNavigate: (page: "books" | "loans" | "users" | "profile") => void;
   user: User;
   onLogout: () => void;
 }
@@ -184,6 +184,15 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
               User Management
             </button>
           )}
+
+          <button
+            className="nav-item"
+            type="button"
+            onClick={() => onNavigate("profile")}
+          >
+            <span>◉</span>
+            My Profile
+          </button>
         </nav>
 
         <div className="sidebar-bottom">

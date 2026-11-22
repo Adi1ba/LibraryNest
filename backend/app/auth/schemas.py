@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -8,6 +7,11 @@ from sqlmodel import SQLModel
 Password = Annotated[
     str,
     StringConstraints(min_length=8, max_length=128),
+]
+
+CurrentPassword = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=128),
 ]
 
 
@@ -20,7 +24,7 @@ class UserCreate(SQLModel):
 
 class UserLogin(SQLModel):
     email: EmailStr
-    password: Password
+    password: str
 
 
 class UserRead(SQLModel):
@@ -44,6 +48,17 @@ class AdminUserRead(SQLModel):
 
 class UserRoleUpdate(SQLModel):
     role: Literal["student", "librarian", "admin"]
+
+
+class ProfileUpdate(SQLModel):
+    first_name: Annotated[str, StringConstraints(min_length=1, max_length=100)] | None = None
+    last_name: Annotated[str, StringConstraints(min_length=1, max_length=100)] | None = None
+    email: EmailStr | None = None
+
+
+class PasswordChange(SQLModel):
+    current_password: CurrentPassword
+    new_password: Password
 
 
 class TokenResponse(SQLModel):
