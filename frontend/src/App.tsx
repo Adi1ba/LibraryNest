@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import BooksPage from "./pages/BooksPage";
 import LoansPage from "./pages/LoansPage";
 import UserManagementPage from "./pages/UserManagementPage";
+import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import {
@@ -13,7 +14,7 @@ import {
 } from "./services/authService";
 import type { User } from "./types/auth";
 
-type Page = "books" | "loans" | "users" | "login" | "register";
+type Page = "books" | "loans" | "users" | "profile" | "login" | "register";
 
 // Prevent duplicate session restoration requests in React StrictMode.
 let sessionRestorePromise: Promise<User | null> | null = null;
@@ -102,6 +103,18 @@ function App() {
     }
   };
 
+  // Update the current user after a successful profile update.
+  const handleProfileUpdated = (updatedUser: User) => {
+    setUser(updatedUser);
+  };
+
+  // ProfilePage handles the password-change API request and logout.
+  // This callback clears the frontend session after that succeeds.
+  const handlePasswordChanged = () => {
+    setUser(null);
+    setCurrentPage("login");
+  };
+
   if (checkingAuth) {
     return <p>Checking authentication...</p>;
   }
@@ -140,6 +153,17 @@ function App() {
         onNavigate={setCurrentPage}
         user={user}
         onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (currentPage === "profile") {
+    return (
+      <ProfilePage
+        user={user}
+        onNavigate={setCurrentPage}
+        onProfileUpdated={handleProfileUpdated}
+        onPasswordChanged={handlePasswordChanged}
       />
     );
   }

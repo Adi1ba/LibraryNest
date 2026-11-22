@@ -1,4 +1,3 @@
-
 export interface User {
   id: number;
   first_name: string;
@@ -19,6 +18,17 @@ export interface RegisterData {
   last_name: string;
   email: string;
   password: string;
+}
+
+export interface ProfileUpdateData {
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
+export interface PasswordChangeData {
+  current_password: string;
+  new_password: string;
 }
 
 export interface TokenResponse {
