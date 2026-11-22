@@ -7,6 +7,7 @@ from alembic import context
 from app.auth.models import User  # noqa: F401
 from app.books.models import Book  # noqa: F401
 from app.database import engine
+from app.groups import models as group_models  # noqa: F401
 from app.loans.models import Loan  # noqa: F401
 
 config = context.config

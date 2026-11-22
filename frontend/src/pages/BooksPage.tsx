@@ -12,7 +12,9 @@ import type { User } from "../types/auth";
 import "./BooksPage.css";
 
 interface BooksPageProps {
-  onNavigate: (page: "books" | "loans" | "users" | "profile") => void;
+  onNavigate: (
+    page: "books" | "loans" | "users" | "profile" | "groups"
+  ) => void;
   user: User;
   onLogout: () => void;
 }
@@ -143,8 +145,10 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
   );
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();
+
   const initials =
     `${user.first_name?.charAt(0) || ""}${user.last_name?.charAt(0) || ""}`.toUpperCase();
+
   const displayRole =
     user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
@@ -178,6 +182,15 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
           >
             <span>▤</span>
             Loan Management
+          </button>
+
+          <button
+            className="nav-item"
+            type="button"
+            onClick={() => onNavigate("groups")}
+          >
+            <span>♡</span>
+            Reading Groups
           </button>
 
           {user.role === "admin" && (
@@ -247,13 +260,18 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
           <div className="welcome-section">
             <div>
               <p className="eyebrow">YOUR LIBRARY AT A GLANCE</p>
-              <h2>{isStaff ? "Manage your collection" : "Explore the collection"}</h2>
+              <h2>
+                {isStaff
+                  ? "Manage your collection"
+                  : "Explore the collection"}
+              </h2>
               <p className="welcome-description">
                 {isStaff
                   ? "Add new books, update existing records, and keep track of your collection."
                   : "Search books and check their availability in the library."}
               </p>
             </div>
+
             <div className="date-label">BOOK INVENTORY</div>
           </div>
 
@@ -297,8 +315,13 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                     <span className="panel-kicker">
                       {editingId !== null ? "EDIT RECORD" : "NEW ENTRY"}
                     </span>
-                    <h3>{editingId !== null ? "Update book" : "Add a new book"}</h3>
+                    <h3>
+                      {editingId !== null
+                        ? "Update book"
+                        : "Add a new book"}
+                    </h3>
                   </div>
+
                   <span className="panel-heading-icon">＋</span>
                 </div>
 
@@ -349,13 +372,17 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                       type="number"
                       min="0"
                       value={totalCopies}
-                      onChange={(e) => setTotalCopies(Number(e.target.value))}
+                      onChange={(e) =>
+                        setTotalCopies(Number(e.target.value))
+                      }
                       required
                     />
                   </div>
 
                   <button className="primary-button" type="submit">
-                    {editingId !== null ? "Save Changes" : "＋ Add Book"}
+                    {editingId !== null
+                      ? "Save Changes"
+                      : "＋ Add Book"}
                   </button>
 
                   {editingId !== null && (
@@ -391,11 +418,17 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
               </div>
 
               {loading ? (
-                <div className="empty-state">Loading your collection...</div>
+                <div className="empty-state">
+                  Loading your collection...
+                </div>
               ) : filteredBooks.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-icon">▤</div>
-                  <h4>{search ? "No matching books" : "Your library is empty"}</h4>
+                  <h4>
+                    {search
+                      ? "No matching books"
+                      : "Your library is empty"}
+                  </h4>
                   <p>
                     {search
                       ? "Try searching with another title, author, or ISBN."
@@ -417,6 +450,7 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                         {isStaff && <th>ACTIONS</th>}
                       </tr>
                     </thead>
+
                     <tbody>
                       {filteredBooks.map((book) => {
                         const isAvailable = book.available_copies > 0;
@@ -428,24 +462,32 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                                 <div className="book-cover">
                                   {book.title.charAt(0).toUpperCase()}
                                 </div>
+
                                 <div>
                                   <strong>{book.title}</strong>
                                   <span>{book.author}</span>
                                 </div>
                               </div>
                             </td>
+
                             <td className="isbn-cell">{book.isbn}</td>
                             <td>{book.total_copies}</td>
                             <td>{book.available_copies}</td>
+
                             <td>
                               <span
                                 className={`availability ${
-                                  isAvailable ? "in-stock" : "out-stock"
+                                  isAvailable
+                                    ? "in-stock"
+                                    : "out-stock"
                                 }`}
                               >
-                                {isAvailable ? "Available" : "Unavailable"}
+                                {isAvailable
+                                  ? "Available"
+                                  : "Unavailable"}
                               </span>
                             </td>
+
                             {isStaff && (
                               <td>
                                 <div className="action-buttons">
@@ -456,6 +498,7 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
                                   >
                                     Edit
                                   </button>
+
                                   <button
                                     className="delete-button"
                                     type="button"

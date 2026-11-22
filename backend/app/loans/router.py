@@ -10,7 +10,10 @@ from app.database import SessionDep
 from app.loans import service
 from app.loans.schemas import LoanCreate, LoanRead, LoanStatusUpdate
 
-router = APIRouter(prefix="/api/loans", tags=["Loans"])
+router = APIRouter(
+    prefix="/api/loans",
+    tags=["Loans"],
+)
 
 StaffUser = Annotated[
     User,
@@ -28,31 +31,56 @@ def create_loan(
     session: SessionDep,
     current_user: CurrentUser,
 ):
-    return service.create_loan(session, loan_data, current_user)
+    return service.create_loan(
+        session,
+        loan_data,
+        current_user,
+    )
 
 
-@router.get("/", response_model=list[LoanRead])
+@router.get(
+    "/",
+    response_model=list[LoanRead],
+)
 def get_loans(
     session: SessionDep,
     current_user: CurrentUser,
 ):
-    return service.get_loans(session, current_user)
+    return service.get_loans(
+        session,
+        current_user,
+    )
 
 
-@router.get("/{loan_id}", response_model=LoanRead)
+@router.get(
+    "/{loan_id}",
+    response_model=LoanRead,
+)
 def get_loan(
     loan_id: int,
     session: SessionDep,
     current_user: CurrentUser,
 ):
-    return service.get_loan(session, loan_id, current_user)
+    return service.get_loan(
+        session,
+        loan_id,
+        current_user,
+    )
 
 
-@router.patch("/{loan_id}/status", response_model=LoanRead)
+@router.patch(
+    "/{loan_id}/status",
+    response_model=LoanRead,
+)
 def update_loan_status(
     loan_id: int,
     status_data: LoanStatusUpdate,
     session: SessionDep,
     current_user: StaffUser,
 ):
-    return service.update_loan_status(session, loan_id, status_data)
+    return service.update_loan_status(
+        session,
+        loan_id,
+        status_data,
+        current_user,
+    )

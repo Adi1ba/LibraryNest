@@ -24,8 +24,11 @@ def update_user_role(
     role_data: UserRoleUpdate,
     current_user: User,
 ) -> AdminUserRead:
-    """Update a user's role. Admins cannot change their own role."""
+    """Update a user's role. Admins cannot change their own role
+    or another admin's role.
+    """
 
+    # Prevent an admin from changing their own role.
     if current_user.id == user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -40,19 +43,12 @@ def update_user_role(
             detail="User not found.",
         )
 
-    if user.role == "admin" and role_data.role != "admin":
-        active_admins = session.exec(
-            select(User).where(
-                User.role == "admin",
-                User.is_active == True,
-            )
-        ).all()
-
-        if len(active_admins) <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="The last active admin cannot be demoted.",
-            )
+    # Prevent an admin from changing another admin's role.
+    if user.role == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot change another admin's role.",
+        )
 
     user.role = role_data.role
 
@@ -68,8 +64,11 @@ def deactivate_user(
     user_id: int,
     current_user: User,
 ) -> AdminUserRead:
-    """Deactivate a user account. Admins cannot deactivate themselves."""
+    """Deactivate a user. Admins cannot deactivate themselves
+    or another admin.
+    """
 
+    # Prevent an admin from deactivating their own account.
     if current_user.id == user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -84,19 +83,12 @@ def deactivate_user(
             detail="User not found.",
         )
 
-    if user.role == "admin" and user.is_active:
-        active_admins = session.exec(
-            select(User).where(
-                User.role == "admin",
-                User.is_active == True,
-            )
-        ).all()
-
-        if len(active_admins) <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="The last active admin cannot be deactivated.",
-            )
+    # Prevent an admin from deactivating another admin.
+    if user.role == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot deactivate another admin.",
+        )
 
     user.is_active = False
 

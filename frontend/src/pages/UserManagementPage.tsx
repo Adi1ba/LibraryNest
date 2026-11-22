@@ -10,7 +10,9 @@ import "./UserManagementPage.css";
 
 interface UserManagementPageProps {
   user: User;
-  onNavigate: (page: "books" | "loans" | "users" | "profile") => void;
+  onNavigate: (
+    page: "books" | "loans" | "users" | "profile" | "groups"
+  ) => void;
   onLogout: () => void;
 }
 
@@ -128,16 +130,39 @@ const UserManagementPage = ({
         <div className="um-nav-label">MENU</div>
 
         <nav className="um-nav">
-          <button onClick={() => onNavigate("books")}>
+          <button
+            type="button"
+            onClick={() => onNavigate("books")}
+          >
             <span>▤</span> Books
           </button>
-          <button onClick={() => onNavigate("loans")}>
+
+          <button
+            type="button"
+            onClick={() => onNavigate("loans")}
+          >
             <span>▣</span> Loan Requests
           </button>
-          <button className="active" onClick={() => onNavigate("users")}>
+
+          <button
+            type="button"
+            onClick={() => onNavigate("groups")}
+          >
+            <span>♧</span> Reading Groups
+          </button>
+
+          <button
+            className="active"
+            type="button"
+            onClick={() => onNavigate("users")}
+          >
             <span>♙</span> User Management
           </button>
-          <button onClick={() => onNavigate("profile")}>
+
+          <button
+            type="button"
+            onClick={() => onNavigate("profile")}
+          >
             <span>◉</span> My Profile
           </button>
         </nav>
@@ -152,7 +177,7 @@ const UserManagementPage = ({
               <span>{user.role}</span>
             </div>
           </div>
-          <button className="um-logout" onClick={onLogout}>
+          <button className="um-logout" type="button" onClick={onLogout}>
             ↪ Logout
           </button>
         </div>

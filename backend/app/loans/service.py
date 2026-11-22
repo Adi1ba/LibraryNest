@@ -86,7 +86,17 @@ def update_loan_status(
     session: Session,
     loan_id: int,
     status_data: LoanStatusUpdate,
+    current_user: User,
 ) -> Loan:
+    """Update loan status. Only librarians and admins are allowed."""
+
+    # Backend service-level authorization check.
+    if current_user.role not in ("librarian", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to update loan status.",
+        )
+
     loan = repository.get_loan(session, loan_id)
 
     if not loan:

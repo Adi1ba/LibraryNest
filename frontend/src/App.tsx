@@ -4,6 +4,7 @@ import BooksPage from "./pages/BooksPage";
 import LoansPage from "./pages/LoansPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import ProfilePage from "./pages/ProfilePage";
+import GroupsPage from "./pages/GroupsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import {
@@ -14,34 +15,36 @@ import {
 } from "./services/authService";
 import type { User } from "./types/auth";
 
-type Page = "books" | "loans" | "users" | "profile" | "login" | "register";
+type Page =
+  | "books"
+  | "loans"
+  | "users"
+  | "profile"
+  | "groups"
+  | "login"
+  | "register";
 
-// Prevent duplicate session restoration requests in React StrictMode.
 let sessionRestorePromise: Promise<User | null> | null = null;
 
 async function restoreSession(): Promise<User | null> {
   if (!sessionRestorePromise) {
     sessionRestorePromise = (async () => {
       try {
-        // First, try the existing access token.
         if (getAccessToken()) {
           try {
             return await getCurrentUser();
           } catch {
-            // Access token may have expired.
-            // Try refreshing it using the HttpOnly cookie.
+            // Try refreshing the access token.
           }
         }
 
-        // Restore the session or obtain a new access token.
         const tokenResponse = await refreshAccessToken();
         return tokenResponse.user;
       } catch {
-        // No valid session could be restored.
         try {
           await logoutUser();
         } catch {
-          // Clear the local token even if the server is unavailable.
+          // Clear the local session if the server is unavailable.
         }
 
         return null;
@@ -65,9 +68,7 @@ function App() {
     const checkAuthentication = async () => {
       const currentUser = await restoreSession();
 
-      if (!isMounted) {
-        return;
-      }
+      if (!isMounted) return;
 
       if (currentUser) {
         setUser(currentUser);
@@ -96,20 +97,17 @@ function App() {
     try {
       await logoutUser();
     } catch {
-      // The frontend should still log out if the server is unavailable.
+      // Still clear the frontend session.
     } finally {
       setUser(null);
       setCurrentPage("login");
     }
   };
 
-  // Update the current user after a successful profile update.
   const handleProfileUpdated = (updatedUser: User) => {
     setUser(updatedUser);
   };
 
-  // ProfilePage handles the password-change API request and logout.
-  // This callback clears the frontend session after that succeeds.
   const handlePasswordChanged = () => {
     setUser(null);
     setCurrentPage("login");
@@ -164,6 +162,16 @@ function App() {
         onNavigate={setCurrentPage}
         onProfileUpdated={handleProfileUpdated}
         onPasswordChanged={handlePasswordChanged}
+      />
+    );
+  }
+
+  if (currentPage === "groups") {
+    return (
+      <GroupsPage
+        user={user}
+        onNavigate={setCurrentPage}
+        onLogout={handleLogout}
       />
     );
   }

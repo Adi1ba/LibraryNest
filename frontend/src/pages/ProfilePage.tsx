@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type {
@@ -14,7 +15,9 @@ import "./ProfilePage.css";
 
 interface ProfilePageProps {
   user: User;
-  onNavigate: (page: "books" | "loans" | "users" | "profile") => void;
+  onNavigate: (
+    page: "books" | "loans" | "users" | "profile" | "groups"
+  ) => void;
   onProfileUpdated: (user: User) => void;
   onPasswordChanged: () => void;
 }
@@ -39,7 +42,6 @@ function ProfilePage({
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
-
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();
@@ -60,7 +62,11 @@ function ProfilePage({
       email: email.trim(),
     };
 
-    if (!profileData.first_name || !profileData.last_name || !profileData.email) {
+    if (
+      !profileData.first_name ||
+      !profileData.last_name ||
+      !profileData.email
+    ) {
       setProfileError("Please fill in all profile fields.");
       return;
     }
@@ -158,6 +164,11 @@ function ProfilePage({
           <button type="button" onClick={() => onNavigate("loans")}>
             <span>▤</span>
             Loan Management
+          </button>
+
+          <button type="button" onClick={() => onNavigate("groups")}>
+            <span>♧</span>
+            Reading Groups
           </button>
 
           {user.role === "admin" && (
@@ -353,7 +364,9 @@ function ProfilePage({
           </form>
         </section>
 
-        <footer className="profile-footer">LibraryNest · Account Settings</footer>
+        <footer className="profile-footer">
+          LibraryNest · Account Settings
+        </footer>
       </main>
     </div>
   );

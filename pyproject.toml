@@ -8,3 +8,5 @@ dependencies = [
 
 [tool.ruff]
 src = ["backend"]
+[tool.ruff.lint]
+ignore = ["B008"]
