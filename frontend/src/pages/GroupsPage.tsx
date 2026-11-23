@@ -26,7 +26,9 @@ import "./GroupsPage.css";
 
 interface GroupsPageProps {
   user: User;
-  onNavigate: (page: "books" | "loans" | "users" | "profile" | "groups") => void;
+  onNavigate: (
+    page: "dashboard" | "books" | "loans" | "users" | "profile" | "groups"
+  ) => void;
   onLogout: () => void;
 }
 
@@ -83,7 +85,6 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
     setSuccess("");
     setWorkspaceLoading(true);
 
-    // Clear previous group's data to prevent stale information.
     setMembers([]);
     setReadingList([]);
     setBooks([]);
@@ -290,21 +291,36 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
         </div>
 
         <div className="sidebar-label">WORKSPACE</div>
+
         <nav className="sidebar-nav">
+          {user.role === "admin" && (
+            <button
+              type="button"
+              className="nav-item"
+              onClick={() => onNavigate("dashboard")}
+            >
+              <span>▦</span> Overview
+            </button>
+          )}
+
           <button className="nav-item" onClick={() => onNavigate("books")}>
             <span>▦</span> Book Management
           </button>
+
           <button className="nav-item" onClick={() => onNavigate("loans")}>
             <span>▤</span> Loan Management
           </button>
+
           <button className="nav-item active" onClick={() => onNavigate("groups")}>
             <span>♡</span> Reading Groups
           </button>
+
           {user.role === "admin" && (
             <button className="nav-item" onClick={() => onNavigate("users")}>
               <span>♙</span> User Management
             </button>
           )}
+
           <button className="nav-item" onClick={() => onNavigate("profile")}>
             <span>◉</span> My Profile
           </button>
@@ -318,9 +334,11 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
               <span>{user.role}</span>
             </div>
           </div>
+
           <button className="sidebar-logout" onClick={onLogout}>
             ↪ Logout
           </button>
+
           <span className="sidebar-version">LibraryNest · MVP</span>
         </div>
       </aside>
@@ -578,8 +596,6 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
                                     >
                                       <option value="">Unassigned</option>
 
-                                      {/* Owner is not a membership record,
-                                          so add the owner separately. */}
                                       {selectedGroup && (
                                         <option value={selectedGroup.owner_id}>
                                           Group owner
@@ -657,9 +673,7 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
                             {isOwner && (
                               <button
                                 className="groups-delete-button"
-                                onClick={() =>
-                                  handleRemoveMember(member.user_id)
-                                }
+                                onClick={() => handleRemoveMember(member.user_id)}
                               >
                                 Remove
                               </button>
