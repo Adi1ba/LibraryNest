@@ -15,7 +15,7 @@ import "./LoansPage.css";
 
 interface LoansPageProps {
   onNavigate: (
-    page: "books" | "loans" | "users" | "profile" | "groups"
+    page: "dashboard" | "books" | "loans" | "users" | "profile" | "groups"
   ) => void;
   user: User;
   onLogout: () => void;
@@ -32,6 +32,7 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
 
   const isStudent = user.role === "student";
   const isStaff = user.role === "librarian" || user.role === "admin";
+  const isAdmin = user.role === "admin";
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();
   const initials = `${user.first_name?.charAt(0) || ""}${user.last_name?.charAt(0) || ""}`.toUpperCase();
@@ -158,6 +159,17 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
         <div className="sidebar-label">WORKSPACE</div>
 
         <nav className="sidebar-nav">
+          {isAdmin && (
+            <button
+              className="nav-item"
+              type="button"
+              onClick={() => onNavigate("dashboard")}
+            >
+              <span>▦</span>
+              Overview
+            </button>
+          )}
+
           <button
             className="nav-item"
             type="button"
@@ -185,7 +197,7 @@ function LoansPage({ onNavigate, user, onLogout }: LoansPageProps) {
             Reading Groups
           </button>
 
-          {user.role === "admin" && (
+          {isAdmin && (
             <button
               className="nav-item"
               type="button"

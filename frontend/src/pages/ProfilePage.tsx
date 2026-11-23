@@ -16,7 +16,7 @@ import "./ProfilePage.css";
 interface ProfilePageProps {
   user: User;
   onNavigate: (
-    page: "books" | "loans" | "users" | "profile" | "groups"
+    page: "dashboard" | "books" | "loans" | "users" | "profile" | "groups"
   ) => void;
   onProfileUpdated: (user: User) => void;
   onPasswordChanged: () => void;
@@ -156,6 +156,16 @@ function ProfilePage({
         <div className="profile-nav-label">WORKSPACE</div>
 
         <nav className="profile-nav">
+          {user.role === "admin" && (
+            <button
+              type="button"
+              onClick={() => onNavigate("dashboard")}
+            >
+              <span>▦</span>
+              Overview
+            </button>
+          )}
+
           <button type="button" onClick={() => onNavigate("books")}>
             <span>▦</span>
             Book Management

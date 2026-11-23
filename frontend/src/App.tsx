@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import BooksPage from "./pages/BooksPage";
 import LoansPage from "./pages/LoansPage";
 import UserManagementPage from "./pages/UserManagementPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import GroupsPage from "./pages/GroupsPage";
 import LoginPage from "./pages/LoginPage";
@@ -16,6 +17,7 @@ import {
 import type { User } from "./types/auth";
 
 type Page =
+  | "dashboard"
   | "books"
   | "loans"
   | "users"
@@ -72,7 +74,9 @@ function App() {
 
       if (currentUser) {
         setUser(currentUser);
-        setCurrentPage("books");
+        setCurrentPage(
+          currentUser.role === "admin" ? "dashboard" : "books"
+        );
       } else {
         setUser(null);
         setCurrentPage("login");
@@ -90,7 +94,9 @@ function App() {
 
   const handleLoginSuccess = (loggedInUser: User) => {
     setUser(loggedInUser);
-    setCurrentPage("books");
+    setCurrentPage(
+      loggedInUser.role === "admin" ? "dashboard" : "books"
+    );
   };
 
   const handleLogout = async () => {
@@ -126,6 +132,21 @@ function App() {
       <LoginPage
         onLoginSuccess={handleLoginSuccess}
         onNavigate={setCurrentPage}
+      />
+    );
+  }
+
+  if (currentPage === "dashboard") {
+    if (user.role !== "admin") {
+      setCurrentPage("books");
+      return <p>Redirecting...</p>;
+    }
+
+    return (
+      <AdminDashboardPage
+        user={user}
+        onNavigate={setCurrentPage}
+        onLogout={handleLogout}
       />
     );
   }

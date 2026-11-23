@@ -39,7 +39,11 @@ def get_current_user(
 
     user = session.get(User, user_id)
 
-    if user is None or not user.is_active:
+    if (
+        user is None
+        or not user.is_active
+        or user.is_banned
+    ):
         raise unauthorized_error
 
     if payload.get("role") != user.role:

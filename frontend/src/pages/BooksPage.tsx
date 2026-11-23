@@ -13,7 +13,7 @@ import "./BooksPage.css";
 
 interface BooksPageProps {
   onNavigate: (
-    page: "books" | "loans" | "users" | "profile" | "groups"
+    page: "dashboard" | "books" | "loans" | "users" | "profile" | "groups"
   ) => void;
   user: User;
   onLogout: () => void;
@@ -34,6 +34,7 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
   const [search, setSearch] = useState("");
 
   const isStaff = user.role === "librarian" || user.role === "admin";
+  const isAdmin = user.role === "admin";
 
   const fetchBooks = async () => {
     try {
@@ -166,6 +167,17 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
         <div className="sidebar-label">WORKSPACE</div>
 
         <nav className="sidebar-nav">
+          {isAdmin && (
+            <button
+              className="nav-item"
+              type="button"
+              onClick={() => onNavigate("dashboard")}
+            >
+              <span>▦</span>
+              Overview
+            </button>
+          )}
+
           <button
             className="nav-item active"
             type="button"
@@ -193,7 +205,7 @@ function BooksPage({ onNavigate, user, onLogout }: BooksPageProps) {
             Reading Groups
           </button>
 
-          {user.role === "admin" && (
+          {isAdmin && (
             <button
               className="nav-item"
               type="button"

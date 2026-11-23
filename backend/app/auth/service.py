@@ -27,14 +27,12 @@ from app.config import settings
 
 
 def _refresh_expiration() -> datetime:
-    """Return the refresh token expiration time."""
     return utc_now() + timedelta(
         days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
     )
 
 
 def _is_expired(expiration: datetime) -> bool:
-    """Check whether a refresh token has expired."""
     if expiration.tzinfo is None:
         expiration = expiration.replace(tzinfo=timezone.utc)
 
@@ -45,7 +43,6 @@ def _create_refresh_session(
     session: Session,
     user_id: int,
 ) -> tuple[str, datetime]:
-    """Create a refresh token and store its hash."""
     refresh_token = create_refresh_token()
     expires_at = _refresh_expiration()
 
@@ -66,8 +63,6 @@ def _revoke_session_atomically(
     now: datetime,
     mark_as_used: bool = False,
 ) -> bool:
-    """Atomically revoke a refresh session."""
-
     if mark_as_used:
         statement = text(
             """
@@ -106,14 +101,10 @@ def register_user(
     session: Session,
     user_data: UserCreate,
 ) -> UserRead:
-    """Register a new user."""
-
     normalized_email = str(user_data.email).strip().lower()
 
     existing_user = session.exec(
-        select(User).where(
-            User.email == normalized_email
-        )
+        select(User).where(User.email == normalized_email)
     ).first()
 
     if existing_user:
@@ -138,13 +129,14 @@ def register_user(
         password_hash=hash_password(user_data.password),
         role="student",
         is_active=True,
+        is_banned=False,
+        ban_reason=None,
     )
 
     try:
         session.add(user)
         session.commit()
         session.refresh(user)
-
     except IntegrityError:
         session.rollback()
         raise HTTPException(
@@ -160,20 +152,17 @@ def authenticate_user(
     email: str,
     password: str,
 ) -> tuple[TokenResponse, str, datetime]:
-    """Authenticate user and create access and refresh tokens."""
-
     normalized_email = email.strip().lower()
 
     user = session.exec(
-        select(User).where(
-            User.email == normalized_email
-        )
+        select(User).where(User.email == normalized_email)
     ).first()
 
     if (
         user is None
         or not verify_password(password, user.password_hash)
         or not user.is_active
+        or user.is_banned
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -199,7 +188,6 @@ def authenticate_user(
 
     try:
         session.commit()
-
     except IntegrityError:
         session.rollback()
         raise HTTPException(
@@ -221,8 +209,6 @@ def refresh_user_session(
     session: Session,
     refresh_token: str,
 ) -> tuple[TokenResponse, str, datetime]:
-    """Validate and rotate a refresh token."""
-
     unauthorized_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or expired refresh token.",
@@ -253,7 +239,12 @@ def refresh_user_session(
 
     user = session.get(User, stored_session.user_id)
 
-    if user is None or not user.is_active or user.id is None:
+    if (
+        user is None
+        or not user.is_active
+        or user.is_banned
+        or user.id is None
+    ):
         _revoke_session_atomically(
             session,
             stored_session.id,
@@ -309,8 +300,6 @@ def revoke_refresh_session(
     session: Session,
     refresh_token: str | None,
 ) -> None:
-    """Revoke the refresh session associated with a token."""
-
     if not refresh_token:
         return
 
@@ -339,8 +328,6 @@ def update_my_profile(
     current_user: User,
     profile_data: ProfileUpdate,
 ) -> UserRead:
-    """Update the authenticated user's profile."""
-
     updates = profile_data.model_dump(exclude_unset=True)
 
     if not updates:
@@ -368,14 +355,10 @@ def update_my_profile(
             )
 
     if "email" in updates:
-        updates["email"] = str(
-            updates["email"]
-        ).strip().lower()
+        updates["email"] = str(updates["email"]).strip().lower()
 
         existing_user = session.exec(
-            select(User).where(
-                User.email == updates["email"]
-            )
+            select(User).where(User.email == updates["email"])
         ).first()
 
         if (
@@ -394,7 +377,6 @@ def update_my_profile(
         session.add(current_user)
         session.commit()
         session.refresh(current_user)
-
     except IntegrityError:
         session.rollback()
         raise HTTPException(
@@ -410,8 +392,6 @@ def change_user_password(
     current_user: User,
     password_data: PasswordChange,
 ) -> None:
-    """Change password and revoke all active refresh sessions."""
-
     if not verify_password(
         password_data.current_password,
         current_user.password_hash,
@@ -439,27 +419,22 @@ def change_user_password(
     now = utc_now()
 
     try:
-        # Update the user's password securely.
         current_user.password_hash = hash_password(
             password_data.new_password
         )
-
         session.add(current_user)
 
-        # Find all refresh sessions belonging to this user.
         refresh_sessions = session.exec(
             select(RefreshSession).where(
                 RefreshSession.user_id == current_user.id
             )
         ).all()
 
-        # Revoke every session that is still active.
         for refresh_session in refresh_sessions:
             if refresh_session.revoked_at is None:
                 refresh_session.revoked_at = now
                 session.add(refresh_session)
 
-        # Save password and revocations in one transaction.
         session.commit()
 
     except Exception:
