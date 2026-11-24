@@ -1,8 +1,13 @@
+
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
+from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import Session, select
 
+from app.audit.service import create_audit_log
 from app.auth.dependencies import CurrentUser
+from app.auth.models import RefreshSession, User
 from app.auth.schemas import (
     PasswordChange,
     ProfileUpdate,
@@ -11,6 +16,7 @@ from app.auth.schemas import (
     UserLogin,
     UserRead,
 )
+from app.auth.security import hash_refresh_token
 from app.auth.service import (
     authenticate_user,
     change_user_password,
@@ -40,6 +46,7 @@ def set_refresh_cookie(
     refresh_token: str,
 ) -> None:
     """Set the refresh token in a secure HttpOnly cookie."""
+
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=refresh_token,
@@ -53,6 +60,7 @@ def set_refresh_cookie(
 
 def clear_refresh_cookie(response: Response) -> None:
     """Remove the refresh token cookie from the browser."""
+
     response.delete_cookie(
         key=REFRESH_COOKIE_NAME,
         httponly=True,
@@ -60,6 +68,33 @@ def clear_refresh_cookie(response: Response) -> None:
         samesite="lax",
         path=REFRESH_COOKIE_PATH,
     )
+
+
+def save_audit_log(
+    session: Session,
+    request: Request,
+    event_type: str,
+    description: str,
+    actor: User | None = None,
+    outcome: str = "success",
+    actor_email: str | None = None,
+) -> None:
+    """Save an audit event without interrupting the main auth operation."""
+
+    try:
+        create_audit_log(
+            session=session,
+            request=request,
+            event_type=event_type,
+            description=description,
+            actor=actor,
+            outcome=outcome,
+            actor_email=actor_email,
+        )
+        session.commit()
+
+    except SQLAlchemyError:
+        session.rollback()
 
 
 @router.post(
@@ -79,14 +114,46 @@ def register(
     response_model=TokenResponse,
 )
 def login(
+    request: Request,
     response: Response,
     user_data: UserLogin,
     session: SessionDep,
 ):
-    token_response, refresh_token, _expires_at = authenticate_user(
-        session,
-        str(user_data.email),
-        user_data.password,
+    normalized_email = str(user_data.email).strip().lower()
+
+    try:
+        token_response, refresh_token, _expires_at = authenticate_user(
+            session,
+            normalized_email,
+            user_data.password,
+        )
+
+    except HTTPException:
+        user = session.exec(
+            select(User).where(User.email == normalized_email)
+        ).first()
+
+        save_audit_log(
+            session=session,
+            request=request,
+            event_type="login_failed",
+            description="Failed login attempt.",
+            actor=user,
+            outcome="failure",
+            actor_email=normalized_email,
+        )
+
+        raise
+
+    user = session.get(User, token_response.user.id)
+
+    save_audit_log(
+        session=session,
+        request=request,
+        event_type="login_success",
+        description="User logged in successfully.",
+        actor=user,
+        outcome="success",
     )
 
     set_refresh_cookie(response, refresh_token)
@@ -124,6 +191,7 @@ def refresh(
 
 @router.post("/logout")
 def logout(
+    request: Request,
     response: Response,
     session: SessionDep,
     refresh_token: Annotated[
@@ -131,7 +199,31 @@ def logout(
         Cookie(alias=REFRESH_COOKIE_NAME),
     ] = None,
 ):
+    user = None
+
+    if refresh_token:
+        token_hash = hash_refresh_token(refresh_token)
+
+        refresh_session = session.exec(
+            select(RefreshSession).where(
+                RefreshSession.token_hash == token_hash
+            )
+        ).first()
+
+        if refresh_session:
+            user = session.get(User, refresh_session.user_id)
+
     revoke_refresh_session(session, refresh_token)
+
+    save_audit_log(
+        session=session,
+        request=request,
+        event_type="logout",
+        description="User logged out.",
+        actor=user,
+        outcome="success",
+    )
+
     clear_refresh_cookie(response)
 
     return {"message": "Logged out successfully."}
@@ -165,6 +257,7 @@ def update_profile(
 
 @router.post("/change-password")
 def change_password(
+    request: Request,
     password_data: PasswordChange,
     current_user: CurrentUser,
     session: SessionDep,
@@ -173,6 +266,15 @@ def change_password(
         session,
         current_user,
         password_data,
+    )
+
+    save_audit_log(
+        session=session,
+        request=request,
+        event_type="password_change",
+        description="User changed their password.",
+        actor=current_user,
+        outcome="success",
     )
 
     return {

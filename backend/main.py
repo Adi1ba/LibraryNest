@@ -3,6 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import models so SQLModel registers their database tables.
+from app.audit import models as audit_models  # noqa: F401
+
+# Import API routers.
+from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.books.router import router as books_router
 from app.database import create_db_and_tables
@@ -17,6 +21,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -28,8 +33,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Create database tables.
 create_db_and_tables()
+
 
 # Register API routers.
 app.include_router(auth_router)
@@ -37,6 +44,7 @@ app.include_router(books_router)
 app.include_router(loans_router)
 app.include_router(users_router)
 app.include_router(groups_router)
+app.include_router(audit_router)
 
 
 @app.get("/api/health")

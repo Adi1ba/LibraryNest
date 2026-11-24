@@ -1,9 +1,14 @@
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getDashboardStats,
   type DashboardStats,
 } from "../services/userService";
+import {
+  getAuditLogs,
+  type AuditLog,
+  type AuditLogResponse,
+} from "../services/auditService";
 import type { User } from "../types/auth";
 import "./AdminDashboardPage.css";
 
@@ -24,6 +29,26 @@ const AdminDashboardPage = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [auditData, setAuditData] = useState<AuditLogResponse | null>(null);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditError, setAuditError] = useState("");
+
+  const [searchText, setSearchText] = useState("");
+  const [eventType, setEventType] = useState("");
+  const [outcome, setOutcome] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const [appliedFilters, setAppliedFilters] = useState({
+    q: "",
+    event_type: "",
+    outcome: "",
+    start_date: "",
+    end_date: "",
+  });
+
+  const [page, setPage] = useState(1);
+
   const loadStats = async () => {
     try {
       setLoading(true);
@@ -42,9 +67,95 @@ const AdminDashboardPage = ({
     }
   };
 
+  const loadAuditLogs = useCallback(async () => {
+    try {
+      setAuditLoading(true);
+      setAuditError("");
+
+      const data = await getAuditLogs({
+        q: appliedFilters.q || undefined,
+        event_type: appliedFilters.event_type || undefined,
+        outcome: appliedFilters.outcome
+          ? (appliedFilters.outcome as "success" | "failure")
+          : undefined,
+        start_date: appliedFilters.start_date
+          ? new Date(appliedFilters.start_date).toISOString()
+          : undefined,
+        end_date: appliedFilters.end_date
+          ? new Date(appliedFilters.end_date).toISOString()
+          : undefined,
+        page,
+        page_size: 10,
+      });
+
+      setAuditData(data);
+    } catch (err) {
+      setAuditError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load audit logs."
+      );
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [appliedFilters, page]);
+
   useEffect(() => {
     loadStats();
   }, []);
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, [loadAuditLogs]);
+
+  const handleAuditFilter = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    setPage(1);
+
+    setAppliedFilters({
+      q: searchText.trim(),
+      event_type: eventType,
+      outcome,
+      start_date: startDate,
+      end_date: endDate,
+    });
+  };
+
+  const clearAuditFilters = () => {
+    setSearchText("");
+    setEventType("");
+    setOutcome("");
+    setStartDate("");
+    setEndDate("");
+    setPage(1);
+
+    setAppliedFilters({
+      q: "",
+      event_type: "",
+      outcome: "",
+      start_date: "",
+      end_date: "",
+    });
+  };
+
+  const formatEvent = (event: string) =>
+    event
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleString();
+
+  const getUserLabel = (log: AuditLog) => {
+    if (log.actor_email) {
+      return log.actor_email;
+    }
+
+    return log.actor_user_id
+      ? `User #${log.actor_user_id}`
+      : "Unknown";
+  };
 
   if (user.role !== "admin") {
     return (
@@ -205,8 +316,11 @@ const AdminDashboardPage = ({
           <button
             className="admin-refresh"
             type="button"
-            onClick={loadStats}
-            disabled={loading}
+            onClick={() => {
+              loadStats();
+              loadAuditLogs();
+            }}
+            disabled={loading || auditLoading}
           >
             ↻ Refresh
           </button>
@@ -307,6 +421,225 @@ const AdminDashboardPage = ({
               <small>Review loan requests</small>
             </button>
           </div>
+        </section>
+
+        {/* Activity and Audit Log */}
+        <section className="admin-audit-section">
+          <div className="admin-section-heading">
+            <h2>Activity & Audit Log</h2>
+            <p>
+              Review user and administrative activities across LibraryNest.
+            </p>
+          </div>
+
+          <form
+            className="admin-audit-filters"
+            onSubmit={handleAuditFilter}
+          >
+            <div className="admin-audit-filter-field">
+              <label htmlFor="audit-search">
+                Search User or Activity
+              </label>
+              <input
+                id="audit-search"
+                type="text"
+                placeholder="Search by email, activity or IP..."
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+              />
+            </div>
+
+            <div className="admin-audit-filter-field">
+              <label htmlFor="audit-event">Event Type</label>
+              <select
+                id="audit-event"
+                value={eventType}
+                onChange={(event) => setEventType(event.target.value)}
+              >
+                <option value="">All Events</option>
+                <option value="login_success">Login Success</option>
+                <option value="login_failed">Login Failed</option>
+                <option value="logout">Logout</option>
+                <option value="password_change">Password Change</option>
+                <option value="role_change">Role Change</option>
+                <option value="user_banned">User Banned</option>
+                <option value="user_unbanned">User Unbanned</option>
+                <option value="user_activated">User Activated</option>
+                <option value="user_deactivated">User Deactivated</option>
+                <option value="bulk_ban">Bulk Ban</option>
+                <option value="bulk_unban">Bulk Unban</option>
+                <option value="sessions_revoked">Sessions Revoked</option>
+              </select>
+            </div>
+
+            <div className="admin-audit-filter-field">
+              <label htmlFor="audit-outcome">Outcome</label>
+              <select
+                id="audit-outcome"
+                value={outcome}
+                onChange={(event) => setOutcome(event.target.value)}
+              >
+                <option value="">All Outcomes</option>
+                <option value="success">Success</option>
+                <option value="failure">Failure</option>
+              </select>
+            </div>
+
+            <div className="admin-audit-filter-field">
+              <label htmlFor="audit-start">From</label>
+              <input
+                id="audit-start"
+                type="datetime-local"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+              />
+            </div>
+
+            <div className="admin-audit-filter-field">
+              <label htmlFor="audit-end">To</label>
+              <input
+                id="audit-end"
+                type="datetime-local"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+              />
+            </div>
+
+            <div className="admin-audit-filter-actions">
+              <button
+                type="submit"
+                className="admin-audit-apply"
+                disabled={auditLoading}
+              >
+                Search / Apply Filters
+              </button>
+
+              <button
+                type="button"
+                className="admin-audit-clear"
+                onClick={clearAuditFilters}
+              >
+                Clear
+              </button>
+            </div>
+          </form>
+
+          {auditError && (
+            <div className="admin-error">
+              <span>{auditError}</span>
+              <button type="button" onClick={loadAuditLogs}>
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {auditLoading ? (
+            <div className="admin-loading">
+              Loading activity logs...
+            </div>
+          ) : auditData && auditData.items.length > 0 ? (
+            <>
+              <div className="admin-audit-summary">
+                <span>
+                  Total records: <strong>{auditData.total}</strong>
+                </span>
+                <span>
+                  Page {auditData.page} of {auditData.total_pages}
+                </span>
+              </div>
+
+              <div className="admin-audit-table-wrapper">
+                <table className="admin-audit-table">
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Actor</th>
+                      <th>Target User</th>
+                      <th>Description</th>
+                      <th>IP Address</th>
+                      <th>Browser</th>
+                      <th>Outcome</th>
+                      <th>Date & Time</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {auditData.items.map((log) => (
+                      <tr key={log.id}>
+                        <td>
+                          <span className="admin-audit-event">
+                            {formatEvent(log.event_type)}
+                          </span>
+                        </td>
+
+                        <td>{getUserLabel(log)}</td>
+
+                        <td>
+                          {log.target_email ||
+                            (log.target_user_id
+                              ? `User #${log.target_user_id}`
+                              : "—")}
+                        </td>
+
+                        <td>{log.description}</td>
+
+                        <td>{log.ip_address || "Unavailable"}</td>
+
+                        <td
+                          className="admin-audit-browser"
+                          title={log.user_agent || "Unavailable"}
+                        >
+                          {log.user_agent || "Unavailable"}
+                        </td>
+
+                        <td>
+                          <span
+                            className={`admin-audit-outcome ${
+                              log.outcome === "success"
+                                ? "success"
+                                : "failure"
+                            }`}
+                          >
+                            {log.outcome}
+                          </span>
+                        </td>
+
+                        <td>{formatDate(log.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="admin-audit-pagination">
+                <button
+                  type="button"
+                  disabled={page <= 1 || auditLoading}
+                  onClick={() => setPage((current) => current - 1)}
+                >
+                  Previous
+                </button>
+
+                <span>
+                  Page {page} of {auditData.total_pages}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={
+                    page >= auditData.total_pages || auditLoading
+                  }
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="admin-loading">
+              No activity logs found for the selected filters.
+            </div>
+          )}
         </section>
 
         <footer className="admin-footer">
