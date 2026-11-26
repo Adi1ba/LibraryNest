@@ -10,14 +10,21 @@ def utc_now() -> datetime:
 
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+
     first_name: str = Field(max_length=100)
     last_name: str = Field(max_length=100)
     email: str = Field(max_length=255, unique=True, index=True)
     password_hash: str = Field(max_length=255)
+
     role: str = Field(default="student", max_length=20)
     is_active: bool = Field(default=True)
     is_banned: bool = Field(default=False)
     ban_reason: str | None = Field(default=None)
+
+    # Brute-force login protection
+    failed_login_attempts: int = Field(default=0)
+    locked_until: datetime | None = Field(default=None)
+
     created_at: datetime = Field(default_factory=utc_now)
 
 

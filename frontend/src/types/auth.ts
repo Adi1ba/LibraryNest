@@ -1,3 +1,4 @@
+
 export interface User {
   id: number;
   first_name: string;
@@ -36,4 +37,12 @@ export interface TokenResponse {
   token_type: string;
   expires_in: number;
   user: User;
+}
+
+export interface MySession {
+  id: number;
+  created_at: string;
+  expires_at: string;
+  last_used_at: string | null;
+  is_current: boolean;
 }

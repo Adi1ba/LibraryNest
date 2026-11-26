@@ -3,12 +3,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.audit.service import create_audit_log
 from app.auth.dependencies import CurrentUser
 from app.auth.models import RefreshSession, User
 from app.auth.schemas import (
+    MySessionRead,
     PasswordChange,
     ProfileUpdate,
     TokenResponse,
@@ -20,8 +21,10 @@ from app.auth.security import hash_refresh_token
 from app.auth.service import (
     authenticate_user,
     change_user_password,
+    get_my_sessions,
     refresh_user_session,
     register_user,
+    revoke_my_session,
     revoke_refresh_session,
     update_my_profile,
 )
@@ -122,7 +125,7 @@ def login(
     normalized_email = str(user_data.email).strip().lower()
 
     try:
-        token_response, refresh_token, _expires_at = authenticate_user(
+        user, token_response, refresh_token = authenticate_user(
             session,
             normalized_email,
             user_data.password,
@@ -144,8 +147,6 @@ def login(
         )
 
         raise
-
-    user = session.get(User, token_response.user.id)
 
     save_audit_log(
         session=session,
@@ -179,7 +180,7 @@ def refresh(
             detail="Refresh token is missing.",
         )
 
-    token_response, new_refresh_token, _expires_at = refresh_user_session(
+    token_response, new_refresh_token = refresh_user_session(
         session,
         refresh_token,
     )
@@ -253,6 +254,92 @@ def update_profile(
         current_user,
         profile_data,
     )
+
+
+# -------------------- MANAGE MY SESSIONS --------------------
+
+
+@router.get(
+    "/me/sessions",
+    response_model=list[MySessionRead],
+)
+def list_my_sessions(
+    current_user: CurrentUser,
+    session: SessionDep,
+    refresh_token: Annotated[
+        str | None,
+        Cookie(alias=REFRESH_COOKIE_NAME),
+    ] = None,
+):
+    current_token_hash = (
+        hash_refresh_token(refresh_token)
+        if refresh_token
+        else None
+    )
+
+    return get_my_sessions(
+        session,
+        current_user,
+        current_token_hash,
+    )
+
+
+@router.delete("/me/sessions/{session_id}")
+def delete_my_session(
+    session_id: int,
+    request: Request,
+    response: Response,
+    current_user: CurrentUser,
+    session: SessionDep,
+    refresh_token: Annotated[
+        str | None,
+        Cookie(alias=REFRESH_COOKIE_NAME),
+    ] = None,
+):
+    current_token_hash = (
+        hash_refresh_token(refresh_token)
+        if refresh_token
+        else None
+    )
+
+    target_session = session.exec(
+        select(RefreshSession).where(
+            RefreshSession.id == session_id,
+            RefreshSession.user_id == current_user.id,
+            col(RefreshSession.revoked_at).is_(None),
+        )
+    ).first()
+
+    if target_session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active session not found.",
+        )
+
+    is_current_session = (
+        current_token_hash is not None
+        and target_session.token_hash == current_token_hash
+    )
+
+    revoke_my_session(
+        session,
+        current_user,
+        session_id,
+    )
+
+    if is_current_session:
+        clear_refresh_cookie(response)
+
+    save_audit_log(
+        session=session,
+        request=request,
+        event_type="session_revoked",
+        description=f"User revoked session {session_id}.",
+        actor=current_user,
+        outcome="success",
+    )
+
+    return {"message": "Session revoked successfully."}
 
 
 @router.post("/change-password")

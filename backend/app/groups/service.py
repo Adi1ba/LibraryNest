@@ -222,25 +222,38 @@ def delete_group(
     group = get_group_or_404(session, group_id)
     require_owner(group, current_user)
 
+    # Step 1: Find all reading-list items belonging to this group.
     items = session.exec(
         select(GroupReadingListItem).where(
             GroupReadingListItem.group_id == group_id
         )
     ).all()
 
+    # Step 2: Delete reading-list items first.
+    for item in items:
+        session.delete(item)
+
+    # Execute reading-list item deletions before proceeding.
+    session.flush()
+
+    # Step 3: Find all memberships belonging to this group.
     memberships = session.exec(
         select(GroupMembership).where(
             GroupMembership.group_id == group_id
         )
     ).all()
 
-    for item in items:
-        session.delete(item)
-
+    # Step 4: Delete group memberships.
     for membership in memberships:
         session.delete(membership)
 
+    # Execute membership deletions before deleting the group.
+    session.flush()
+
+    # Step 5: Delete the group.
     session.delete(group)
+
+    # Step 6: Commit all changes.
     session.commit()
 
 

@@ -68,6 +68,11 @@ export const createGroup = (data: {
     body: JSON.stringify(data),
   });
 
+export const deleteGroup = (groupId: number) =>
+  apiRequest<void>(`/${groupId}`, {
+    method: "DELETE",
+  });
+
 export const getGroupMembers = (groupId: number) =>
   apiRequest<GroupMember[]>(`/${groupId}/members`);
 
