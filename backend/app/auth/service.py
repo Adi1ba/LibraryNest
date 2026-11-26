@@ -1,15 +1,14 @@
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, cast
+from typing import cast
 
 from fastapi import HTTPException, status
-from sqlalchemy import text
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select, update
 
 from app.auth.models import RefreshSession, User, utc_now
 from app.auth.schemas import (
+    MySessionRead,
     PasswordChange,
     ProfileUpdate,
     TokenResponse,
@@ -32,117 +31,93 @@ def _refresh_expiration() -> datetime:
     )
 
 
-def _is_expired(expiration: datetime) -> bool:
-    if expiration.tzinfo is None:
-        expiration = expiration.replace(tzinfo=timezone.utc)
+def _is_expired(expires_at: datetime) -> bool:
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    return expiration <= utc_now()
+    return expires_at <= utc_now()
 
 
 def _create_refresh_session(
     session: Session,
-    user_id: int,
-) -> tuple[str, datetime]:
+    user: User,
+) -> str:
     refresh_token = create_refresh_token()
-    expires_at = _refresh_expiration()
 
     refresh_session = RefreshSession(
-        user_id=user_id,
+        user_id=cast(int, user.id),
         token_hash=hash_refresh_token(refresh_token),
-        expires_at=expires_at,
+        expires_at=_refresh_expiration(),
     )
 
     session.add(refresh_session)
+    session.commit()
 
-    return refresh_token, expires_at
+    return refresh_token
 
 
 def _revoke_session_atomically(
     session: Session,
     session_id: int,
-    now: datetime,
     mark_as_used: bool = False,
 ) -> bool:
-    if mark_as_used:
-        statement = text(
-            """
-            UPDATE refreshsession
-            SET revoked_at = :now,
-                last_used_at = :now
-            WHERE id = :session_id
-              AND revoked_at IS NULL
-            """
-        )
-    else:
-        statement = text(
-            """
-            UPDATE refreshsession
-            SET revoked_at = :now
-            WHERE id = :session_id
-              AND revoked_at IS NULL
-            """
-        )
+    now = utc_now()
 
-    result = cast(
-        CursorResult[Any],
-        session.connection().execute(
-            statement,
-            {
-                "now": now,
-                "session_id": session_id,
-            },
-        ),
+    values = {"revoked_at": now}
+
+    if mark_as_used:
+        values["last_used_at"] = now
+
+    statement = (
+        update(RefreshSession)
+        .where(
+            col(RefreshSession.id) == session_id,
+            col(RefreshSession.revoked_at).is_(None),
+        )
+        .values(**values)
     )
 
-    return result.rowcount == 1
+    result = session.exec(statement)
+    row_count = result.rowcount
+
+    session.commit()
+
+    return row_count == 1
 
 
 def register_user(
     session: Session,
-    user_data: UserCreate,
+    user_create: UserCreate,
 ) -> UserRead:
-    normalized_email = str(user_data.email).strip().lower()
-
     existing_user = session.exec(
-        select(User).where(User.email == normalized_email)
+        select(User).where(User.email == user_create.email)
     ).first()
 
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
-        )
-
-    first_name = user_data.first_name.strip()
-    last_name = user_data.last_name.strip()
-
-    if not first_name or not last_name:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="First name and last name are required.",
+            detail="Email already registered.",
         )
 
     user = User(
-        first_name=first_name,
-        last_name=last_name,
-        email=normalized_email,
-        password_hash=hash_password(user_data.password),
+        first_name=user_create.first_name,
+        last_name=user_create.last_name,
+        email=user_create.email,
+        password_hash=hash_password(user_create.password),
         role="student",
-        is_active=True,
-        is_banned=False,
-        ban_reason=None,
     )
 
+    session.add(user)
+
     try:
-        session.add(user)
         session.commit()
         session.refresh(user)
     except IntegrityError:
         session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
-        ) from None
+            detail="Email already registered.",
+        )
 
     return UserRead.model_validate(user)
 
@@ -151,149 +126,163 @@ def authenticate_user(
     session: Session,
     email: str,
     password: str,
-) -> tuple[TokenResponse, str, datetime]:
-    normalized_email = email.strip().lower()
-
+) -> tuple[User, TokenResponse, str]:
     user = session.exec(
-        select(User).where(User.email == normalized_email)
+        select(User).where(User.email == email)
     ).first()
 
-    if (
-        user is None
-        or not verify_password(password, user.password_hash)
-        or not user.is_active
-        or user.is_banned
-    ):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if user.id is None:
+    now = utc_now()
+
+    # Check whether the account is currently locked.
+    if user.locked_until is not None:
+        locked_until = user.locked_until
+
+        if locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+
+        if locked_until > now:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed login attempts. Try again later.",
+            )
+
+        # Lock period has expired.
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        session.add(user)
+        session.commit()
+
+    # Verify password.
+    if not verify_password(password, user.password_hash):
+        user.failed_login_attempts += 1
+
+        if user.failed_login_attempts >= 5:
+            user.locked_until = now + timedelta(minutes=15)
+
+        session.add(user)
+        session.commit()
+
+        if user.locked_until is not None:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=(
+                    "Too many failed login attempts. "
+                    "Your account is locked for 15 minutes."
+                ),
+            )
+
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="User ID could not be retrieved.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+
+    # Correct password: reset failed login attempts.
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is inactive.",
+        )
+
+    if user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been banned.",
         )
 
     access_token = create_access_token(
-        user_id=user.id,
+        user_id=cast(int, user.id),
         role=user.role,
     )
 
-    refresh_token, expires_at = _create_refresh_session(
-        session,
-        user.id,
-    )
+    refresh_token = _create_refresh_session(session, user)
 
-    try:
-        session.commit()
-    except IntegrityError:
-        session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Could not create an authentication session.",
-        ) from None
-
-    response = TokenResponse(
+    token_response = TokenResponse(
         access_token=access_token,
         token_type="bearer",
         expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=UserRead.model_validate(user),
     )
 
-    return response, refresh_token, expires_at
+    return user, token_response, refresh_token
 
 
 def refresh_user_session(
     session: Session,
     refresh_token: str,
-) -> tuple[TokenResponse, str, datetime]:
-    unauthorized_error = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired refresh token.",
-    )
-
+) -> tuple[TokenResponse, str]:
     token_hash = hash_refresh_token(refresh_token)
 
-    stored_session = session.exec(
+    refresh_session = session.exec(
         select(RefreshSession).where(
             RefreshSession.token_hash == token_hash
         )
     ).first()
 
-    if stored_session is None or stored_session.id is None:
-        raise unauthorized_error
-
-    if stored_session.revoked_at is not None:
-        raise unauthorized_error
-
-    if _is_expired(stored_session.expires_at):
-        _revoke_session_atomically(
-            session,
-            stored_session.id,
-            utc_now(),
-        )
-        session.commit()
-        raise unauthorized_error
-
-    user = session.get(User, stored_session.user_id)
-
-    if (
-        user is None
-        or not user.is_active
-        or user.is_banned
-        or user.id is None
-    ):
-        _revoke_session_atomically(
-            session,
-            stored_session.id,
-            utc_now(),
-        )
-        session.commit()
-        raise unauthorized_error
-
-    now = utc_now()
-
-    try:
-        revoked = _revoke_session_atomically(
-            session,
-            stored_session.id,
-            now,
-            mark_as_used=True,
-        )
-
-        if not revoked:
-            session.rollback()
-            raise unauthorized_error
-
-        access_token = create_access_token(
-            user_id=user.id,
-            role=user.role,
-        )
-
-        new_refresh_token, expires_at = _create_refresh_session(
-            session,
-            user.id,
-        )
-
-        session.commit()
-
-    except IntegrityError:
-        session.rollback()
+    if not refresh_session:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not refresh authentication session.",
-        ) from None
+            detail="Invalid refresh token.",
+        )
 
-    response = TokenResponse(
+    if refresh_session.revoked_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh session has been revoked.",
+        )
+
+    if _is_expired(refresh_session.expires_at):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired.",
+        )
+
+    user = session.get(User, refresh_session.user_id)
+
+    if not user or not user.is_active or user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is unavailable.",
+        )
+
+    revoked = _revoke_session_atomically(
+        session,
+        cast(int, refresh_session.id),
+        mark_as_used=True,
+    )
+
+    if not revoked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh session is no longer valid.",
+        )
+
+    access_token = create_access_token(
+        user_id=cast(int, user.id),
+        role=user.role,
+    )
+
+    new_refresh_token = _create_refresh_session(session, user)
+
+    token_response = TokenResponse(
         access_token=access_token,
         token_type="bearer",
         expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=UserRead.model_validate(user),
     )
 
-    return response, new_refresh_token, expires_at
+    return token_response, new_refresh_token
 
 
 def revoke_refresh_session(
@@ -305,84 +294,37 @@ def revoke_refresh_session(
 
     token_hash = hash_refresh_token(refresh_token)
 
-    stored_session = session.exec(
+    refresh_session = session.exec(
         select(RefreshSession).where(
             RefreshSession.token_hash == token_hash
         )
     ).first()
 
-    if stored_session is None or stored_session.id is None:
+    if not refresh_session:
+        return
+
+    if refresh_session.revoked_at is not None:
         return
 
     _revoke_session_atomically(
         session,
-        stored_session.id,
-        utc_now(),
+        cast(int, refresh_session.id),
     )
-
-    session.commit()
 
 
 def update_my_profile(
     session: Session,
     current_user: User,
-    profile_data: ProfileUpdate,
+    profile_update: ProfileUpdate,
 ) -> UserRead:
-    updates = profile_data.model_dump(exclude_unset=True)
+    update_data = profile_update.model_dump(exclude_unset=True)
 
-    if not updates:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please provide at least one field to update.",
-        )
-
-    if "first_name" in updates:
-        updates["first_name"] = updates["first_name"].strip()
-
-        if not updates["first_name"]:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="First name cannot be empty.",
-            )
-
-    if "last_name" in updates:
-        updates["last_name"] = updates["last_name"].strip()
-
-        if not updates["last_name"]:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Last name cannot be empty.",
-            )
-
-    if "email" in updates:
-        updates["email"] = str(updates["email"]).strip().lower()
-
-        existing_user = session.exec(
-            select(User).where(User.email == updates["email"])
-        ).first()
-
-        if (
-            existing_user is not None
-            and existing_user.id != current_user.id
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="An account with this email already exists.",
-            )
-
-    for field, value in updates.items():
+    for field, value in update_data.items():
         setattr(current_user, field, value)
 
-    try:
-        session.add(current_user)
-        session.commit()
-        session.refresh(current_user)
-    except IntegrityError:
-        session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
-        ) from None
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
 
     return UserRead.model_validate(current_user)
 
@@ -390,53 +332,96 @@ def update_my_profile(
 def change_user_password(
     session: Session,
     current_user: User,
-    password_data: PasswordChange,
+    password_change: PasswordChange,
 ) -> None:
     if not verify_password(
-        password_data.current_password,
+        password_change.current_password,
         current_user.password_hash,
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your current password is incorrect.",
+            detail="Current password is incorrect.",
         )
 
-    if verify_password(
-        password_data.new_password,
-        current_user.password_hash,
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your new password must be different from your current password.",
-        )
+    current_user.password_hash = hash_password(
+        password_change.new_password
+    )
 
-    if current_user.id is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="User ID could not be retrieved.",
+    session.add(current_user)
+
+    active_sessions = session.exec(
+        select(RefreshSession).where(
+            col(RefreshSession.user_id) == current_user.id,
+            col(RefreshSession.revoked_at).is_(None),
         )
+    ).all()
 
     now = utc_now()
 
-    try:
-        current_user.password_hash = hash_password(
-            password_data.new_password
+    for refresh_session in active_sessions:
+        refresh_session.revoked_at = now
+
+    session.commit()
+
+
+def get_my_sessions(
+    session: Session,
+    current_user: User,
+    current_token_hash: str | None = None,
+) -> list[MySessionRead]:
+    now = utc_now()
+
+    refresh_sessions = session.exec(
+        select(RefreshSession)
+        .where(
+            col(RefreshSession.user_id) == current_user.id,
+            col(RefreshSession.revoked_at).is_(None),
+            col(RefreshSession.expires_at) > now,
         )
-        session.add(current_user)
+        .order_by(col(RefreshSession.created_at).desc())
+    ).all()
 
-        refresh_sessions = session.exec(
-            select(RefreshSession).where(
-                RefreshSession.user_id == current_user.id
-            )
-        ).all()
+    return [
+        MySessionRead(
+            id=cast(int, refresh_session.id),
+            created_at=refresh_session.created_at,
+            expires_at=refresh_session.expires_at,
+            last_used_at=refresh_session.last_used_at,
+            is_current=(
+                current_token_hash is not None
+                and refresh_session.token_hash == current_token_hash
+            ),
+        )
+        for refresh_session in refresh_sessions
+    ]
 
-        for refresh_session in refresh_sessions:
-            if refresh_session.revoked_at is None:
-                refresh_session.revoked_at = now
-                session.add(refresh_session)
 
-        session.commit()
+def revoke_my_session(
+    session: Session,
+    current_user: User,
+    session_id: int,
+) -> None:
+    refresh_session = session.exec(
+        select(RefreshSession).where(
+            col(RefreshSession.id) == session_id,
+            col(RefreshSession.user_id) == current_user.id,
+            col(RefreshSession.revoked_at).is_(None),
+        )
+    ).first()
 
-    except Exception:
-        session.rollback()
-        raise
+    if not refresh_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active session not found.",
+        )
+
+    revoked = _revoke_session_atomically(
+        session,
+        session_id,
+    )
+
+    if not revoked:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session is already revoked or unavailable.",
+        )

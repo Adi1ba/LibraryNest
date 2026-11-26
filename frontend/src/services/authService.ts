@@ -1,5 +1,7 @@
+
 import type {
   LoginData,
+  MySession,
   PasswordChangeData,
   ProfileUpdateData,
   RegisterData,
@@ -22,6 +24,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
     }
 
     throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json();
@@ -128,6 +134,28 @@ export const changePassword = async (
   });
 
   return handleResponse<{ message: string }>(response);
+};
+
+export const getMySessions = async (): Promise<MySession[]> => {
+  const response = await fetch(`${API_URL}/me/sessions`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
+
+  return handleResponse<MySession[]>(response);
+};
+
+export const revokeMySession = async (
+  sessionId: number
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/me/sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
+
+  await handleResponse<{ message?: string }>(response);
 };
 
 export const getAccessToken = (): string | null => {

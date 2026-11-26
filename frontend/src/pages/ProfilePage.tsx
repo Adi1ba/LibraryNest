@@ -1,16 +1,22 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+
 import type {
+  MySession,
   PasswordChangeData,
   ProfileUpdateData,
   User,
 } from "../types/auth";
+
 import {
   changePassword,
+  getMySessions,
   logoutUser,
+  revokeMySession,
   updateMyProfile,
 } from "../services/authService";
+
 import "./ProfilePage.css";
 
 interface ProfilePageProps {
@@ -44,10 +50,100 @@ function ProfilePage({
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
-  const fullName = `${user.first_name} ${user.last_name}`.trim();
-  const initials = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`
-    .toUpperCase();
+  // Manage My Sessions states
+  const [sessions, setSessions] = useState<MySession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionError, setSessionError] = useState("");
+  const [sessionSuccess, setSessionSuccess] = useState("");
+  const [revokingSessionId, setRevokingSessionId] = useState<number | null>(
+    null
+  );
 
+  const fullName = `${user.first_name} ${user.last_name}`.trim();
+
+  const initials = `${user.first_name?.[0] || ""}${
+    user.last_name?.[0] || ""
+  }`.toUpperCase();
+
+  // Load current user's sessions
+  const loadSessions = async () => {
+    try {
+      setSessionsLoading(true);
+      setSessionError("");
+      setSessionSuccess("");
+
+      const data = await getMySessions();
+      setSessions(data);
+    } catch (err) {
+      setSessionError(
+        err instanceof Error ? err.message : "Unable to load your sessions."
+      );
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadSessions();
+  }, []);
+
+  // Revoke a selected session
+  const handleRevokeSession = async (session: MySession) => {
+    const confirmed = window.confirm(
+      session.is_current
+        ? "Are you sure you want to log out from this device?"
+        : "Are you sure you want to revoke this session?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSessionError("");
+      setSessionSuccess("");
+      setRevokingSessionId(session.id);
+
+      await revokeMySession(session.id);
+
+      if (session.is_current) {
+        await logoutUser();
+        onPasswordChanged();
+        return;
+      }
+
+      setSessions((previous) =>
+        previous.filter((item) => item.id !== session.id)
+      );
+
+      setSessionSuccess("Session revoked successfully.");
+    } catch (err) {
+      setSessionError(
+        err instanceof Error ? err.message : "Unable to revoke this session."
+      );
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
+  const formatSessionDate = (date: string | null): string => {
+    if (!date) {
+      return "Not used yet";
+    }
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Unavailable";
+    }
+
+    return parsedDate.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  };
+
+  // Update profile
   const handleProfileSubmit = async (
     event: FormEvent<HTMLFormElement>
   ) => {
@@ -92,6 +188,7 @@ function ProfilePage({
     }
   };
 
+  // Change password
   const handlePasswordSubmit = async (
     event: FormEvent<HTMLFormElement>
   ) => {
@@ -232,6 +329,7 @@ function ProfilePage({
           </div>
         </section>
 
+        {/* Personal Information */}
         <section className="profile-section">
           <div className="profile-section-heading">
             <div>
@@ -298,6 +396,7 @@ function ProfilePage({
           </form>
         </section>
 
+        {/* Change Password */}
         <section className="profile-section">
           <div className="profile-section-heading">
             <div>
@@ -323,7 +422,9 @@ function ProfilePage({
                   id="current-password"
                   type="password"
                   value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  onChange={(event) =>
+                    setCurrentPassword(event.target.value)
+                  }
                   autoComplete="current-password"
                   required
                 />
@@ -345,12 +446,16 @@ function ProfilePage({
               </div>
 
               <div className="profile-field">
-                <label htmlFor="confirm-password">Confirm New Password</label>
+                <label htmlFor="confirm-password">
+                  Confirm New Password
+                </label>
                 <input
                   id="confirm-password"
                   type="password"
                   value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  onChange={(event) =>
+                    setConfirmPassword(event.target.value)
+                  }
                   minLength={8}
                   maxLength={128}
                   autoComplete="new-password"
@@ -372,6 +477,95 @@ function ProfilePage({
               {passwordLoading ? "Changing Password..." : "Change Password"}
             </button>
           </form>
+        </section>
+
+        {/* Manage My Sessions */}
+        <section className="profile-section">
+          <div className="profile-section-heading session-heading">
+            <div>
+              <span>ACCOUNT SECURITY</span>
+              <h2>Manage My Sessions</h2>
+              <p>
+                View devices where your account has active sessions and
+                revoke sessions you no longer recognize or use.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="session-refresh-button"
+              onClick={() => void loadSessions()}
+              disabled={sessionsLoading}
+            >
+              {sessionsLoading ? "Refreshing..." : "↻ Refresh"}
+            </button>
+          </div>
+
+          {sessionError && (
+            <div className="profile-alert error">{sessionError}</div>
+          )}
+
+          {sessionSuccess && (
+            <div className="profile-alert success">{sessionSuccess}</div>
+          )}
+
+          {sessionsLoading ? (
+            <p className="sessions-empty">Loading your sessions...</p>
+          ) : sessions.length === 0 ? (
+            <p className="sessions-empty">No active sessions found.</p>
+          ) : (
+            <div className="sessions-list">
+              {sessions.map((session) => (
+                <div className="session-card" key={session.id}>
+                  <div className="session-card-info">
+                    <div className="session-card-title">
+                      <h3>Session #{session.id}</h3>
+
+                      {session.is_current && (
+                        <span className="session-current-badge">
+                          This device
+                        </span>
+                      )}
+                    </div>
+
+                    <p>
+                      <strong>Signed in:</strong>{" "}
+                      {formatSessionDate(session.created_at)}
+                    </p>
+
+                    <p>
+                      <strong>Last active:</strong>{" "}
+                      {formatSessionDate(session.last_used_at)}
+                    </p>
+
+                    <p>
+                      <strong>Expires:</strong>{" "}
+                      {formatSessionDate(session.expires_at)}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="session-revoke-button"
+                    onClick={() => void handleRevokeSession(session)}
+                    disabled={revokingSessionId === session.id}
+                  >
+                    {revokingSessionId === session.id
+                      ? "Revoking..."
+                      : session.is_current
+                        ? "Log out this device"
+                        : "Revoke session"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="profile-security-note">
+            Revoking a session prevents that session from refreshing its
+            access token. An already-issued access token on another device
+            may remain valid until it expires.
+          </p>
         </section>
 
         <footer className="profile-footer">

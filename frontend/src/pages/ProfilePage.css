@@ -399,6 +399,124 @@
   font-size: 10px;
 }
 
+/* Manage My Sessions */
+
+.session-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.session-refresh-button {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border: 1px solid var(--profile-sage);
+  border-radius: 8px;
+  background: white;
+  color: var(--profile-sage-dark);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.session-refresh-button:hover {
+  background: var(--profile-sage-light);
+}
+
+.session-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px;
+  border: 1px solid var(--profile-border);
+  border-radius: 10px;
+  background: #fffafb;
+}
+
+.session-card-info {
+  min-width: 0;
+}
+
+.session-card-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.session-card-title h3 {
+  margin: 0;
+  color: var(--profile-text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.session-current-badge {
+  padding: 4px 9px;
+  border-radius: 20px;
+  background: var(--profile-sage-light);
+  color: var(--profile-sage-dark);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.session-card-info p {
+  margin: 5px 0;
+  color: #89938b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.session-card-info strong {
+  color: #52645a;
+}
+
+.session-revoke-button {
+  flex-shrink: 0;
+  padding: 9px 13px;
+  border: 1px solid #e8bdc8;
+  border-radius: 8px;
+  background: #fff3f6;
+  color: #a66f80;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.session-revoke-button:hover {
+  background: #f9e0e5;
+}
+
+.session-revoke-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sessions-empty {
+  padding: 20px;
+  border-radius: 9px;
+  background: #fffafb;
+  color: #89938b;
+  font-size: 12px;
+  text-align: center;
+}
+
 /* Responsive */
 
 @media (max-width: 1100px) {
@@ -466,5 +584,22 @@
 
   .profile-section {
     padding: 18px;
+  }
+
+  .session-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .session-revoke-button {
+    width: 100%;
+  }
+
+  .session-heading {
+    flex-direction: column;
+  }
+
+  .session-refresh-button {
+    align-self: flex-start;
   }
 }

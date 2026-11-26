@@ -137,3 +137,10 @@ class TokenResponse(SQLModel):
     token_type: str = "bearer"
     expires_in: int
     user: UserRead
+
+class MySessionRead(SQLModel):
+    id: int
+    created_at: datetime
+    expires_at: datetime
+    last_used_at: datetime | None = None
+    is_current: bool = False

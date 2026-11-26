@@ -13,6 +13,7 @@ import { getBooks } from "../services/bookService";
 import {
   getMyGroups,
   createGroup,
+  deleteGroup,
   getGroupMembers,
   addGroupMember,
   updateMemberPermissions,
@@ -143,6 +144,36 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
       await loadWorkspace(group);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create group.");
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!selectedGroup || !isOwner) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this group? This will remove the group and its shared reading list."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setError("");
+      setSuccess("");
+
+      await deleteGroup(selectedGroup.id);
+
+      setSelectedGroup(null);
+      setMembers([]);
+      setReadingList([]);
+      setBooks([]);
+      setPermissionDrafts({});
+
+      setSuccess("Group deleted successfully.");
+      await loadGroups();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to delete group."
+      );
     }
   };
 
@@ -351,20 +382,33 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
           </div>
 
           {selectedGroup && (
-            <button
-              className="groups-back"
-              onClick={() => {
-                setSelectedGroup(null);
-                setMembers([]);
-                setReadingList([]);
-                setBooks([]);
-                setPermissionDrafts({});
-                setError("");
-                setSuccess("");
-              }}
-            >
-              ← All groups
-            </button>
+            <div className="groups-topbar-actions">
+              {isOwner && (
+                <button
+                  type="button"
+                  className="groups-delete-button"
+                  onClick={handleDeleteGroup}
+                >
+                  Delete Group
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="groups-back"
+                onClick={() => {
+                  setSelectedGroup(null);
+                  setMembers([]);
+                  setReadingList([]);
+                  setBooks([]);
+                  setPermissionDrafts({});
+                  setError("");
+                  setSuccess("");
+                }}
+              >
+                ← All groups
+              </button>
+            </div>
           )}
         </header>
 
@@ -617,6 +661,7 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
 
                                   {canDelete && (
                                     <button
+                                      type="button"
                                       className="groups-delete-button"
                                       onClick={() => handleDeleteItem(item.id)}
                                     >
@@ -672,6 +717,7 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
 
                             {isOwner && (
                               <button
+                                type="button"
                                 className="groups-delete-button"
                                 onClick={() => handleRemoveMember(member.user_id)}
                               >
@@ -708,6 +754,7 @@ function GroupsPage({ user, onNavigate, onLogout }: GroupsPageProps) {
                               ))}
 
                               <button
+                                type="button"
                                 className="groups-save-button"
                                 onClick={() =>
                                   handleSavePermissions(member.user_id)
