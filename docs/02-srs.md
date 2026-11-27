@@ -1,4 +1,4 @@
-# LibraryNest â€” Software Requirements Specification (SRS)
+# LibraryNest — Software Requirements Specification (SRS)
 
 | **Field** | **Value** |
 |---|---|
