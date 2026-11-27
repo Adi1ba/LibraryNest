@@ -1,6 +1,7 @@
 
 # Business logic for Book CRUD.
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.books import repository
@@ -78,4 +79,14 @@ def update_book(
 
 def delete_book(session: Session, book_id: int) -> None:
     book = get_book(session, book_id)
-    repository.delete_book(session, book)
+
+    try:
+        repository.delete_book(session, book)
+
+    except IntegrityError:
+        session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This book is referenced by existing records and cannot be deleted."
+        )
