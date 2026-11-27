@@ -20,20 +20,21 @@ Sections and tables are marked **MVP** or **Beta**. Build the MVP parts for the 
 
 ## 1. Overview
 
-* **MVP:** A FastAPI REST API for book management, book search, availability, and loan requests, stored in MySQL and connected to the React + TypeScript frontend.
-* **Beta:** The same app gains user registration, login, Student/Librarian/Admin roles, profile management, and role-based access control.
+* **MVP:** A FastAPI REST API for book management, book search, and availability, connected to a React + TypeScript frontend. Book data is stored in Supabase PostgreSQL.
+* **Beta:** The application extends the MVP with loan management, user registration and login, Student/Librarian/Admin roles, JWT authentication, role-based access control, profile and session management, user administration, groups, reading lists, audit logs, and administrative dashboards.
 
 ## 2. Tech stack
 
-| **Layer**        | **Choice**         | **Why**                                                         | **Release** |
-| ---------------- | ------------------ | --------------------------------------------------------------- | ----------- |
-| API              | FastAPI            | Request validation, type hints, and automatic API documentation | MVP         |
-| ORM / models     | SQLAlchemy         | Connects Python models and queries to MySQL                     | MVP         |
-| Database         | MySQL              | Stores book, loan, and user records                             | MVP         |
-| DB driver        | PyMySQL            | Connects Python and MySQL                                       | MVP         |
-| Frontend         | React + TypeScript | Builds the library web interface                                | MVP         |
-| Authentication   | JWT                | Authenticates users through access tokens                       | Beta        |
-| Password hashing | pwdlib with Argon2 | Stores passwords securely                                       | Beta        |
+| **Layer**        | **Choice**                 | **Why**                                                          | **Release** |
+| ---------------- | -------------------------- | ---------------------------------------------------------------- | ----------- |
+| API              | FastAPI                    | Request validation, type hints, and automatic API documentation | MVP         |
+| ORM / models     | SQLModel / SQLAlchemy      | Defines application models and handles database operations      | MVP         |
+| Database         | Supabase PostgreSQL        | Stores application data                                          | MVP         |
+| DB connection    | SQLAlchemy database engine | Connects the FastAPI backend to PostgreSQL                       | MVP         |
+| Frontend         | React + TypeScript         | Builds the library web interface                                 | MVP         |
+| Authentication   | JWT                        | Authenticates users through access tokens                        | Beta        |
+| Password hashing | pwdlib with Argon2         | Securely hashes user passwords                                   | Beta        |
+| Token security   | HS256 and refresh tokens   | Signs access tokens and supports token renewal                   | Beta        |
 
 ## 3. Architecture
 
@@ -41,8 +42,8 @@ Sections and tables are marked **MVP** or **Beta**. Build the MVP parts for the 
 flowchart TD
     U[Student / Librarian / Admin] --> F[React + TypeScript Frontend]
     F -->|REST API / JSON| A[FastAPI Backend]
-    A --> O[SQLAlchemy]
-    O --> D[(MySQL Database)]
+    A --> O[SQLModel / SQLAlchemy]
+    O --> D[(Supabase PostgreSQL)]
 ```
 
 ### 3.1 Request flow — MVP
@@ -52,11 +53,12 @@ sequenceDiagram
     participant U as User
     participant F as React Frontend
     participant A as FastAPI
-    participant D as MySQL
-    U->>F: Search books or submit loan request
+    participant D as Supabase PostgreSQL
+
+    U->>F: Search, view, or manage books
     F->>A: Send HTTP request
     A->>A: Validate request data
-    A->>D: Query or update records
+    A->>D: Query or update book records
     D-->>A: Return database result
     A-->>F: Return JSON response
     F-->>U: Display result
@@ -69,262 +71,339 @@ sequenceDiagram
     participant U as User
     participant F as React Frontend
     participant A as FastAPI
-    participant D as MySQL
+    participant D as Supabase PostgreSQL
+
     U->>F: Submit email and password
-    F->>A: POST /api/v1/auth/login
+    F->>A: POST /api/auth/login
     A->>D: Find user and verify password
     D-->>A: Return user record
-    A-->>F: Return access token
-    F->>A: Request protected resource with token
-    A->>A: Verify token and user role
+    A->>A: Verify password and generate tokens
+    A-->>F: Return access token and refresh token
+    F->>A: Request protected resource with access token
+    A->>A: Validate token and load current user
+    A->>A: Check account status and authorization
     A->>D: Access permitted data
-    D-->>A: Return result
+    D-->>A: Return database result
     A-->>F: Return JSON response
+    F-->>U: Display result
 ```
 
 ## 4. Project structure
 
 ```text
 backend/
-  main.py              # Creates FastAPI app and includes routers
-  database.py          # MySQL connection and database session
-  models.py            # Database models and request/response schemas
-  routers/
-    books.py           # /api/v1/books
-    loans.py           # /api/v1/loans
-    auth.py            # (Beta) Registration and login
-    users.py           # (Beta) User profile
-    admin.py           # (Beta) User and role management
-  requirements.txt
+    app/
+        main.py                 # Creates FastAPI app and includes routers
+        database.py             # Database engine and session dependency
+        auth/
+            models.py           # User model
+            router.py           # Registration, login, refresh, logout and profile
+            dependencies.py     # Current-user authentication dependencies
+            permissions.py      # Role and permission checks
+            schemas.py          # Authentication and user schemas
+        books/
+            router.py           # Book CRUD endpoints
+        loans/
+            router.py           # Loan management endpoints (Beta)
+        users/
+            router.py           # User administration endpoints (Beta)
+        groups/
+            router.py           # Group and reading-list endpoints (Beta)
+        audit/
+            router.py           # Audit log endpoints (Beta)
+        ...
+    requirements.txt
 
 frontend/
-  src/
-    App.tsx
-    pages/
-      Books.tsx
-      Loans.tsx
-      Login.tsx        # (Beta)
-      Signup.tsx       # (Beta)
-      Profile.tsx      # (Beta)
-      Admin.tsx        # (Beta)
+    src/
+        App.tsx                 # Application routes and authentication restore
+        ...
+        pages/
+            Books.tsx           # Book browsing and management
+            Loans.tsx           # Loan management (Beta)
+            Login.tsx           # Login (Beta)
+            Signup.tsx          # Registration (Beta)
+            Profile.tsx         # User profile (Beta)
+            Admin.tsx           # Administrative interface (Beta)
 
 docs/
-  01-prd.md
-  02-srs.md
-  03-tdd.md
+    01-prd.md
+    02-srs.md
+    03-tdd.md
 ```
 
-Keep routers simple: validate input, check permissions where required, and use the database session to read or write records.
+Keep routers simple: validate input, apply authentication and permission checks where required, and use the database session to read or write records. Business logic should be handled by the relevant application service or module rather than duplicated across endpoints.
 
 ## 5. Data model
 
-### 5.1 `book` table — MVP
+The application uses Supabase PostgreSQL as its database. SQLModel/SQLAlchemy models provide the backend representation of application data.
 
-| **Column**         | **Type**     | **Rules**                   |
-| ------------------ | ------------ | --------------------------- |
-| `id`               | integer      | Primary key, auto increment |
-| `title`            | varchar(200) | Not null                    |
-| `author`           | varchar(150) | Not null                    |
-| `isbn`             | varchar(20)  | Unique, not null            |
-| `total_copies`     | integer      | Not null, minimum 0         |
-| `available_copies` | integer      | Not null, minimum 0         |
-| `created_at`       | timestamp    | Not null                    |
-| `updated_at`       | timestamp    | Not null                    |
+### 5.1 `book` entity — MVP
 
-### 5.2 `loan` table — MVP
+The book entity stores the information required for book management, search, and availability.
 
-| **Column**      | **Type**     | **Rules**                                        |
-| --------------- | ------------ | ------------------------------------------------ |
-| `id`            | integer      | Primary key, auto increment                      |
-| `book_id`       | integer      | FK → `book.id`                                   |
-| `student_name`  | varchar(100) | Not null                                         |
-| `student_email` | varchar(254) | Not null                                         |
-| `status`        | varchar(20)  | `Pending`, `Approved`, `Rejected`, or `Returned` |
-| `requested_at`  | timestamp    | Not null                                         |
-| `returned_at`   | timestamp    | Nullable                                         |
+| **Field**          | **Purpose**                                      |
+| ------------------ | ------------------------------------------------ |
+| Book identifier    | Uniquely identifies a book record                |
+| Title              | Stores the book title                            |
+| Author             | Stores the author's name                         |
+| ISBN               | Identifies the book using its ISBN               |
+| Total copies       | Represents the total number of copies            |
+| Available copies   | Represents the number of available copies        |
 
-In the MVP, the student's name and email identify the request. Pending requests do not reduce available copies. Approval reduces availability by one, and recording a return increases it by one.
+### 5.2 `loan` entity — Beta
 
-### 5.3 Additional table — Beta
+Loan management is part of the Beta release. The loan module handles requests associated with books and registered users.
 
-**`app_user`**
+| **Field / relation** | **Purpose**                                                   |
+| -------------------- | ------------------------------------------------------------- |
+| Loan identifier      | Uniquely identifies a loan record                             |
+| Book reference       | Associates a loan with a book                                 |
+| User reference       | Associates a loan with a registered user                      |
+| Loan status          | Represents the current processing state of a loan             |
+| Request information  | Stores information associated with the loan request           |
 
-| **Column**      | **Type**     | **Rules**                           |
-| --------------- | ------------ | ----------------------------------- |
-| `id`            | integer      | Primary key, auto increment         |
-| `name`          | varchar(100) | Not null                            |
-| `email`         | varchar(254) | Unique, not null                    |
-| `password_hash` | varchar(255) | Not null; never returned by the API |
-| `role`          | varchar(20)  | `Student`, `Librarian`, or `Admin`  |
-| `is_active`     | boolean      | Default `true`                      |
-| `created_at`    | timestamp    | Not null                            |
+The loan service must maintain book availability consistently when loan requests are processed and returned. Exact field names and database constraints follow the implemented models.
 
-**`loan` (additional column in Beta)**
+### 5.3 Additional entities — Beta
 
-| **Column** | **Type** | **Rules**                                             |
-| ---------- | -------- | ----------------------------------------------------- |
-| `user_id`  | integer  | FK → `app_user.id`, nullable for existing MVP records |
+The Beta release introduces user management, group functionality, reading lists, and audit logging.
 
-Indexes: `book(isbn)`, `book(title)`, `loan(book_id)`, `loan(status)`, and `app_user(email)`.
+**User**
+
+The user model supports registration, authentication, profile management, account status, and role-based access control.
+
+| **Field / concept** | **Purpose**                                      |
+| ------------------- | ------------------------------------------------ |
+| User identifier     | Identifies a registered user                     |
+| Name                | Stores the user's name                           |
+| Email               | Identifies the user's account                    |
+| Password hash       | Stores the securely hashed password              |
+| Role                | Determines the user's application role           |
+| Account status      | Represents whether the account is active         |
+
+**Group**
+
+Supports group creation, membership management, and member-specific permissions.
+
+**Reading list**
+
+Stores book entries associated with a group reading list.
+
+**Audit log**
+
+Records relevant application activities, including the actor, target, event, description, request information, and outcome.
+
+**Session and refresh-token data**
+
+Supports refresh-token handling, session management, and session revocation. Token and session records are handled according to the implemented authentication models and services.
+
+Indexes and database constraints are maintained according to the actual SQLModel/SQLAlchemy models and migrations. Do not assume additional columns or indexes that are not present in the implementation.
 
 ### 5.4 Schemas
 
-| **Schema**      | **Used for**          | **Fields**                                            | **Release** |
-| --------------- | --------------------- | ----------------------------------------------------- | ----------- |
-| `BookCreate`    | Add a book            | `title`, `author`, `isbn`, `total_copies`             | MVP         |
-| `BookUpdate`    | Update a book         | `title?`, `author?`, `isbn?`, `total_copies?`         | MVP         |
-| `BookRead`      | Book responses        | Book fields, including `id` and `available_copies`    | MVP         |
-| `LoanCreate`    | Submit a loan request | `book_id`, `student_name`, `student_email`            | MVP         |
-| `LoanRead`      | Loan responses        | Loan fields, including `id`, `status`, and timestamps | MVP         |
-| `SignupRequest` | Register              | `name`, `email`, `password`                           | Beta        |
-| `LoginRequest`  | Login                 | `email`, `password`                                   | Beta        |
-| `UserRead`      | User responses        | `id`, `name`, `email`, `role`, `is_active`            | Beta        |
-| `RoleUpdate`    | Update a role         | `role`                                                | Beta        |
-| `ProfileUpdate` | Update a profile      | `name`                                                | Beta        |
+Request and response schemas validate incoming data and control the information returned by the API.
+
+| **Schema / concept** | **Used for**                         | **Fields / information**                       | **Release** |
+| ------------------- | ------------------------------------ | ----------------------------------------------- | ----------- |
+| Book create         | Add a book                           | Book information                                | MVP         |
+| Book update         | Update a book                        | Updated book information                        | MVP         |
+| Book read           | Book responses                       | Book information and availability               | MVP         |
+| Loan create         | Submit a loan request                | Loan request information                        | Beta        |
+| Loan read           | Loan responses                       | Loan information and status                     | Beta        |
+| Registration       | Register a user                      | Name, email, and password                       | Beta        |
+| Login               | Authenticate a user                  | Email and password                              | Beta        |
+| User read           | Return user information              | User profile and role information               | Beta        |
+| Role update         | Change a user's role                 | Role information                                | Beta        |
+| Profile update      | Update a user profile                | Profile information                             | Beta        |
+| Group schemas       | Manage groups and memberships        | Group and membership information                | Beta        |
+| Reading-list schemas| Manage group reading lists           | Reading-list item information                   | Beta        |
+| Audit schemas       | Return audit records                 | Audit event information                         | Beta        |
+
+Password hashes and other sensitive authentication data must not be exposed in public user responses.
 
 ## 6. REST API design
 
-Base path: `/api/v1`. Request and response bodies use JSON.
+Base path: `/api`. Request and response bodies use JSON.
 
 ### 6.1 Endpoints — MVP
 
-| **Method** | **Path**                    | **Body**     | **Success**           | **Errors**          | **Purpose**                       |
-| ---------- | --------------------------- | ------------ | --------------------- | ------------------- | --------------------------------- |
-| `POST`     | `/api/v1/books`             | `BookCreate` | `201 BookRead`        | `409`, `422`        | Add a book                        |
-| `GET`      | `/api/v1/books`             | —            | `200 BookRead[]`      | —                   | List and search books             |
-| `GET`      | `/api/v1/books/{id}`        | —            | `200 BookRead`        | `404`               | View a book                       |
-| `PATCH`    | `/api/v1/books/{id}`        | `BookUpdate` | `200 BookRead`        | `404`, `422`        | Update a book                     |
-| `DELETE`   | `/api/v1/books/{id}`        | —            | `204`                 | `404`, `409`        | Delete an eligible book           |
-| `POST`     | `/api/v1/loans`             | `LoanCreate` | `201 LoanRead`        | `404`, `422`        | Submit a loan request             |
-| `GET`      | `/api/v1/loans`             | —            | `200 LoanRead[]`      | —                   | List loan requests                |
-| `GET`      | `/api/v1/loans/{id}`        | —            | `200 LoanRead`        | `404`               | Track a loan request              |
-| `PATCH`    | `/api/v1/loans/{id}/status` | `status`     | `200 LoanRead`        | `404`, `409`, `422` | Approve, reject, or record return |
-| `GET`      | `/api/health`               | —            | `200 {"status":"ok"}` | —                   | Check API status                  |
+| **Method** | **Path**             | **Purpose**           | **Release** |
+| ---------- | -------------------- | --------------------- | ----------- |
+| `POST`     | `/api/books/`        | Add a book            | MVP         |
+| `GET`      | `/api/books/`        | List and search books | MVP         |
+| `GET`      | `/api/books/{book_id}` | View a book         | MVP         |
+| `PUT`      | `/api/books/{book_id}` | Update a book        | MVP         |
+| `DELETE`   | `/api/books/{book_id}` | Delete a book        | MVP         |
 
-The book list endpoint supports an optional `search` query parameter to search by title, author, or ISBN.
+The book list endpoint supports searching by book information such as title, author, and ISBN.
 
 ### 6.2 Endpoints — Beta
 
-Protected endpoints require `Authorization: Bearer <access_token>`.
+Protected endpoints require a valid access token:
+
+`Authorization: Bearer <access_token>`
 
 **Authentication and profile**
 
-| **Method** | **Path**                 | **Body**        | **Success**        | **Errors**   |
-| ---------- | ------------------------ | --------------- | ------------------ | ------------ |
-| `POST`     | `/api/v1/auth/signup`    | `SignupRequest` | `201 UserRead`     | `409`, `422` |
-| `POST`     | `/api/v1/auth/login`     | `LoginRequest`  | `200` access token | `401`, `422` |
-| `GET`      | `/api/v1/users/me`       | —               | `200 UserRead`     | `401`        |
-| `PATCH`    | `/api/v1/users/me`       | `ProfileUpdate` | `200 UserRead`     | `401`, `422` |
-| `GET`      | `/api/v1/users/me/loans` | —               | `200 LoanRead[]`   | `401`        |
+| **Method** | **Path**                                  | **Purpose**                       |
+| ---------- | ----------------------------------------- | --------------------------------- |
+| `POST`     | `/api/auth/register`                      | Register a user                   |
+| `POST`     | `/api/auth/login`                         | Authenticate a user               |
+| `POST`     | `/api/auth/refresh`                       | Refresh authentication tokens      |
+| `POST`     | `/api/auth/logout`                        | Log out and handle token revocation |
+| `GET`      | `/api/auth/me`                            | Get the current user's profile     |
+| `PATCH`    | `/api/auth/me`                            | Update the current user's profile  |
+| `GET`      | `/api/auth/me/sessions`                   | List the current user's sessions   |
+| `DELETE`   | `/api/auth/me/sessions/{session_id}`      | Revoke a session                  |
+| `POST`     | `/api/auth/change-password`               | Change the account password       |
+
+**Loan management**
+
+| **Method** | **Path**                       | **Purpose**                   |
+| ---------- | ------------------------------ | ----------------------------- |
+| `GET`      | `/api/loans/`                  | List loan records             |
+| `POST`     | `/api/loans/`                  | Create a loan request         |
+| `GET`      | `/api/loans/{loan_id}`          | View a loan record             |
+| `PATCH`    | `/api/loans/{loan_id}/status`   | Update loan status             |
 
 **User and role management**
 
-| **Method** | **Path**                          | **Who** | **Body**     | **Success**      | **Errors**                 |
-| ---------- | --------------------------------- | ------- | ------------ | ---------------- | -------------------------- |
-| `GET`      | `/api/v1/admin/users`             | Admin   | —            | `200 UserRead[]` | `401`, `403`               |
-| `PATCH`    | `/api/v1/admin/users/{id}/role`   | Admin   | `RoleUpdate` | `200 UserRead`   | `401`, `403`, `404`, `422` |
-| `PATCH`    | `/api/v1/admin/users/{id}/status` | Admin   | `is_active`  | `200 UserRead`   | `401`, `403`, `404`        |
+| **Method** | **Path**                                      | **Purpose**                    |
+| ---------- | --------------------------------------------- | ------------------------------ |
+| `GET`      | `/api/users/`                                 | List users                     |
+| `GET`      | `/api/users/admin/dashboard-stats`            | Retrieve admin dashboard stats |
+| `POST`     | `/api/users/bulk-action`                      | Perform bulk user actions      |
+| `GET`      | `/api/users/{user_id}`                        | View user details              |
+| `PATCH`    | `/api/users/{user_id}/role`                   | Update a user's role           |
+| `PATCH`    | `/api/users/{user_id}/deactivate`             | Deactivate a user              |
+| `PATCH`    | `/api/users/{user_id}/activate`               | Activate a user                |
+| `POST`     | `/api/users/{user_id}/ban`                    | Ban a user                     |
+| `PATCH`    | `/api/users/{user_id}/unban`                  | Unban a user                   |
+| `POST`     | `/api/users/{user_id}/sessions/revoke`        | Revoke user sessions           |
 
-In Beta, book management and loan processing are restricted to Librarian and Admin roles. Students can search books, submit requests, and view their own loans.
+**Groups and reading lists**
+
+| **Method** | **Path**                                                        | **Purpose**                     |
+| ---------- | --------------------------------------------------------------- | ------------------------------- |
+| `GET`      | `/api/groups`                                                   | List groups                     |
+| `POST`     | `/api/groups`                                                   | Create a group                  |
+| `GET`      | `/api/groups/{group_id}`                                        | View a group                    |
+| `PATCH`    | `/api/groups/{group_id}`                                        | Update a group                  |
+| `DELETE`   | `/api/groups/{group_id}`                                        | Delete a group                  |
+| `GET`      | `/api/groups/{group_id}/members`                                | List group members              |
+| `POST`     | `/api/groups/{group_id}/members`                                | Add a group member              |
+| `PATCH`    | `/api/groups/{group_id}/members/{user_id}/permissions`          | Update member permissions       |
+| `DELETE`   | `/api/groups/{group_id}/members/{user_id}`                      | Remove a group member           |
+| `POST`     | `/api/groups/{group_id}/reading-list`                           | Add a reading-list item         |
+| `GET`      | `/api/groups/{group_id}/reading-list`                           | View the group reading list     |
+| `PATCH`    | `/api/groups/{group_id}/reading-list/{item_id}`                 | Update a reading-list item       |
+| `DELETE`   | `/api/groups/{group_id}/reading-list/{item_id}`                 | Delete a reading-list item       |
+
+**Audit logs**
+
+| **Method** | **Path**       | **Purpose**                |
+| ---------- | -------------- | -------------------------- |
+| `GET`      | `/api/audit/`  | Retrieve audit log records |
+
+The audit endpoint supports filtering and pagination according to the implemented router.
 
 ### 6.3 Examples
 
 **Search books**
 
 ```http
-GET /api/v1/books?search=database
+GET /api/books/?search=database
 ```
 
-```json
-[
-  {
-    "id": 1,
-    "title": "Database Systems",
-    "author": "Example Author",
-    "isbn": "9781234567890",
-    "total_copies": 5,
-    "available_copies": 3
-  }
-]
-```
-
-**Submit a loan request — MVP**
+**Login — Beta**
 
 ```http
-POST /api/v1/loans
+POST /api/auth/login
 Content-Type: application/json
 ```
 
-```json
-{
-  "book_id": 1,
-  "student_name": "Student One",
-  "student_email": "student@example.com"
-}
+The login request contains the user's email and password. After successful authentication, the backend returns authentication token information.
+
+**Access a protected resource — Beta**
+
+```http
+GET /api/auth/me
+Authorization: Bearer <access_token>
 ```
 
-**Response**
-
-```json
-{
-  "id": 1,
-  "book_id": 1,
-  "student_name": "Student One",
-  "student_email": "student@example.com",
-  "status": "Pending"
-}
-```
+The backend validates the token and returns the authenticated user's profile information.
 
 ### 6.4 Error format
 
-Use FastAPI's standard error format.
+Use FastAPI's standard error format where applicable.
 
 ```json
 {
-  "detail": "Loan request not found"
+  "detail": "Resource not found"
 }
 ```
 
-Use `422` for invalid input, `404` for missing records, `401` for unauthenticated requests, and `403` for unauthorized actions.
+Common HTTP status codes include:
+
+* `400` — Invalid operation or request.
+* `401` — Missing, invalid, or expired authentication.
+* `403` — Authenticated user is not permitted to perform the action.
+* `404` — Requested resource does not exist.
+* `409` — Conflict with existing data or resource state.
+* `422` — Request validation error.
+* `500` — Unexpected server-side error.
+
+The actual response status depends on the endpoint implementation and the type of error.
 
 ### 6.5 Design rules
 
-* Use plural resource names such as `/books`, `/loans`, and `/users`.
-* Use `GET` to read, `POST` to create, `PATCH` to update, and `DELETE` to delete.
+* Use resource-based paths such as `/books/`, `/loans/`, `/users/`, and `/groups`.
+* Use `GET` to read, `POST` to create or perform an action, `PUT` for book updates, `PATCH` for partial updates, and `DELETE` to delete resources.
 * Validate request data before database changes.
+* Authenticate protected requests before accessing user-specific resources.
+* Check roles and resource-level permissions before restricted operations.
 * Return clear error messages when an operation fails.
-* Use `/api/v1` as the API base path.
+* Use `/api` as the API base path.
+* Keep database access inside the backend; the frontend communicates through REST API requests.
 
 ## 7. Database access
 
-* `database.py` creates the SQLAlchemy engine using the MySQL connection settings.
-* A database session is provided to each FastAPI request.
-* MVP tables are created in the MySQL database for local development.
-* Database changes must preserve book quantities and loan status consistency.
-* All database access goes through the FastAPI backend; the frontend does not connect directly to MySQL.
+* The backend uses SQLModel/SQLAlchemy to define models and communicate with Supabase PostgreSQL.
+* The database module creates the database engine and provides a session dependency to FastAPI endpoints.
+* Each request obtains a database session through the application's dependency system.
+* All database access goes through the FastAPI backend; the frontend does not connect directly to PostgreSQL.
+* Database changes must preserve data consistency, including book availability and loan processing.
+* Database credentials and connection settings are supplied through environment variables.
+* Database schema changes must remain compatible with the application code that uses them.
 
 ## 8. Configuration
 
-| **Variable**   | **Purpose**                       | **Release** |
-| -------------- | --------------------------------- | ----------- |
-| `DATABASE_URL` | MySQL connection URL              | MVP         |
-| `JWT_SECRET`   | Secret used to sign access tokens | Beta        |
+| **Variable**       | **Purpose**                                      | **Release** |
+| ------------------ | ------------------------------------------------ | ----------- |
+| `DATABASE_URL`     | Supabase PostgreSQL connection URL               | MVP         |
+| `JWT_SECRET_KEY`   | Secret used to sign access tokens                | Beta        |
+| `PASSWORD_PEPPER`  | Additional secret used during password processing | Beta       |
 
 Example local configuration:
 
 ```env
-DATABASE_URL=mysql+pymysql://username:password@localhost:3306/librarynest
-JWT_SECRET=replace_with_a_long_random_secret
+DATABASE_URL=postgresql://username:password@host:port/database
+JWT_SECRET_KEY=replace_with_a_long_random_secret
+PASSWORD_PEPPER=replace_with_a_different_long_random_secret
 ```
 
-Do not commit `.env` or database credentials to GitHub.
+Use the actual Supabase connection string and the required environment configuration for the deployment environment. Do not commit `.env` files, database credentials, JWT secrets, or password pepper values to GitHub.
 
 ## 9. Deployment
 
-* The frontend and backend must be configured to communicate through the REST API.
-* MySQL must be available in the deployment environment.
+* The frontend and backend are deployed and configured to communicate through the REST API.
+* The backend connects to Supabase PostgreSQL using deployment environment variables.
 * Environment variables must be configured outside the source code.
-* The deployed application must be tested for book search, loan requests, and role permissions.
+* The deployed application must be tested for book management, search, authentication, loan processing, and role-based access.
+* The API documentation is available through FastAPI at `/api/docs`.
+* The OpenAPI specification is available at `/api/openapi.json`.
+* Deployment configuration must allow the frontend origin to communicate with the backend through the configured CORS settings.
 
 ## 10. Authentication and RBAC design — Beta
 
@@ -332,57 +411,81 @@ Do not commit `.env` or database credentials to GitHub.
 
 * Users register with their name, email, and password.
 * Email addresses must be unique.
-* Passwords are stored as secure hashes, not plain text.
-* Login returns an access token after successful authentication.
+* Passwords are processed using the configured password pepper and securely hashed using `pwdlib` with Argon2.
+* Password hashes are stored instead of plain-text passwords.
+* Login verifies the submitted credentials and generates an HS256-signed JWT access token.
+* Access tokens contain claims such as `sub`, `role`, `iat`, and `exp`.
+* The default access-token lifetime is 15 minutes.
+* Refresh tokens are generated using a secure random token and stored as hashes for session and refresh management.
+* The frontend restores authentication by validating the current access token and attempting token refresh when necessary.
 * Protected requests must include a valid access token.
 
 ### 10.2 Role permissions
 
-| **Action**                 | **Student** | **Librarian** | **Admin** |
-| -------------------------- | ----------- | ------------- | --------- |
-| Search and view books      | Yes         | Yes           | Yes       |
-| Submit loan requests       | Yes         | No            | No        |
-| View own loans             | Yes         | No            | No        |
-| Manage books               | No          | Yes           | Yes       |
-| Approve or reject requests | No          | Yes           | Yes       |
-| Record returns             | No          | Yes           | Yes       |
-| Manage users and roles     | No          | No            | Yes       |
+The application supports three user roles: Student, Librarian, and Admin. The backend applies role checks to restricted operations. Group-specific operations also use membership and permission checks.
+
+| **Action**                         | **Student** | **Librarian** | **Admin** |
+| ---------------------------------- | ----------- | ------------- | --------- |
+| Search and view books              | Yes         | Yes           | Yes       |
+| Manage books                       | No          | Yes           | Yes       |
+| Access loan management             | According to endpoint permission | According to endpoint permission | According to endpoint permission |
+| Manage users and roles             | No          | No            | Yes       |
+| Access administrative user tools   | No          | No            | Yes       |
+| Manage group membership            | According to group permissions | According to group permissions | According to group permissions |
+| Manage group reading lists         | According to group permissions | According to group permissions | According to group permissions |
+| View administrative audit logs     | No          | No            | Yes       |
+
+Group owners and members are subject to the group-level permission checks implemented by the backend. A user's global role alone does not replace those checks.
 
 ### 10.3 Permission checks
 
 * FastAPI verifies the access token before allowing access to protected endpoints.
-* The backend checks the user's role before performing restricted operations.
-* Students can only view their own loan records.
-* Librarian and Admin users can process loan requests.
-* Only Admin users can manage user roles and account status.
-* Unauthorized requests return `403`; unauthenticated requests return `401`.
+* The backend loads the current user and checks account status before allowing protected operations.
+* Inactive or banned users are rejected by the authentication dependency.
+* The backend compares the role in the token with the user's current database role.
+* Role-restricted endpoints use backend permission dependencies such as `require_roles`.
+* Admin-only user-management operations are protected by Admin role checks.
+* Group operations check ownership, membership, and the relevant member permission.
+* Users must not be allowed to access resources outside the permissions granted to them.
+* Unauthenticated requests return `401`; authenticated but unauthorized requests return `403` where applicable.
 
 ## 11. Security — Beta
 
-| **Area**       | **Design**                             |
-| -------------- | -------------------------------------- |
-| Passwords      | Secure password hashing                |
-| Authentication | JWT access tokens                      |
-| Authorization  | Role checks in FastAPI                 |
-| Database       | Parameterized SQLAlchemy queries       |
-| Validation     | Validate input using request schemas   |
-| Data exposure  | Never return password hashes           |
-| Configuration  | Store secrets in environment variables |
+| **Area**        | **Design**                                                              |
+| --------------- | ----------------------------------------------------------------------- |
+| Passwords       | `pwdlib` with Argon2 and password pepper                                |
+| Authentication  | HS256-signed JWT access tokens                                          |
+| Refresh tokens  | Secure random refresh tokens stored as hashes                           |
+| Authorization   | Role checks and resource-level permission checks in FastAPI              |
+| Account status  | Reject inactive or banned users during authentication                   |
+| Database        | SQLModel/SQLAlchemy database operations                                 |
+| Validation      | Validate input using request schemas                                    |
+| Data exposure   | Never return password hashes or sensitive token data                    |
+| Session control | Support session revocation and refresh-token management                  |
+| Configuration   | Store secrets and database credentials in environment variables         |
+| Audit           | Record relevant administrative and application events                   |
 
 ## 12. Database schema updates — Beta
 
-* Add the `app_user` table.
-* Add the nullable `user_id` field to the `loan` table to associate new requests with registered users.
-* Keep existing MVP loan records valid.
-* Ensure the database schema is updated before deploying code that depends on the new fields.
+* Extend the database with the user, authentication, and other entities required by Beta functionality.
+* Associate loan records with registered users according to the implemented loan model.
+* Add the database structures required for group membership, permissions, reading lists, and audit logging.
+* Support refresh-token and session management using the implemented authentication design.
+* Keep existing book data valid when extending the application.
+* Ensure database schema changes are applied before deploying code that depends on them.
+* Keep model definitions and database schema changes consistent.
 
 ## 13. Risks
 
-| **Risk**                                       | **Mitigation**                                            |
-| ---------------------------------------------- | --------------------------------------------------------- |
-| Book availability becomes incorrect            | Update availability when loans are approved and returned. |
-| Duplicate ISBN records                         | Enforce a unique constraint on ISBN.                      |
-| Unauthorized book or loan operations           | Check roles in FastAPI before restricted actions.         |
-| Students access another student's loan records | Restrict loan queries to the authenticated student.       |
-| Database connection failure                    | Verify MySQL configuration and display a clear error.     |
-| Credentials are exposed                        | Keep `.env` and database credentials out of GitHub.       |
+| **Risk**                                       | **Mitigation**                                                        |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| Book availability becomes incorrect            | Maintain consistent availability updates during loan processing.     |
+| Duplicate ISBN records                         | Enforce ISBN uniqueness in the database.                              |
+| Unauthorized book or loan operations           | Apply backend role and permission checks.                              |
+| Users access another user's protected data     | Validate ownership and resource-level permissions.                    |
+| Inactive or banned users access the system     | Check account status during authentication.                            |
+| Database connection failure                    | Verify Supabase configuration and handle database errors clearly.     |
+| Refresh tokens or sessions are misused         | Store refresh-token hashes and support session revocation.             |
+| Credentials or secrets are exposed             | Keep `.env` and deployment secrets out of GitHub.                      |
+| Group resources are accessed without permission | Verify group ownership, membership, and member permissions.           |
+| Audit information is incomplete                | Record relevant events through the audit service.                      |
