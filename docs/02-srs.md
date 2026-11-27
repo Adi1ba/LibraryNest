@@ -4,7 +4,7 @@
 |---|---|
 | Product | LibraryNest |
 | Version | MVP + Beta |
-| Releases | MVP â€” Mid-term, Beta â€” Final |
+| Releases | MVP — Mid-term, Beta — Final |
 | Status | Draft |
 | Related docs | [Product Requirements Document (PRD)](01-prd.md), [Technical Design Document (TDD)](03-tdd.md) |
 
@@ -26,9 +26,9 @@ This document specifies the requirements for LibraryNest: the MVP (book manageme
 
 ### 1.2 Scope
 
-* **MVP:** Users can browse and search books, view book details and availability, and authorized library operators can create, update, and delete book records. The application stores data in Supabase PostgreSQL.
-* **Beta:** Users can register and log in. Students can submit loan requests and access their own loan records. Librarians can manage books and process loans. Admins can manage users, roles, account status, and administrative operations. Users can also access group and reading-list features according to their permissions.
-* **Out of scope:** Online payments, email notifications, advanced reservation queues, AI-based recommendations, and other features listed as out of scope in the [PRD, section 5](01-prd.md).
+- **MVP:** Users can browse and search books, view book details and availability, and authorized library operators can create, update, and delete book records. The application stores data in Supabase PostgreSQL.
+- **Beta:** Users can register and log in. Students can submit loan requests and access their own loan records. Librarians can manage books and process loans. Admins can manage users, roles, account status, and administrative operations. Users can also access group and reading-list features according to their permissions.
+- **Out of scope:** Online payments, email notifications, advanced reservation queues, AI-based recommendations, and other features listed as out of scope in the [PRD, section 5](01-prd.md).
 
 ### 1.3 Definitions
 
@@ -64,14 +64,14 @@ LibraryNest consists of a React + TypeScript frontend, a FastAPI + Python backen
 
 ```mermaid
 flowchart TD
-    S[Student] --> FE[React + TypeScript Frontend]
-    L[Librarian] --> FE
-    A[Admin] --> FE
-    G[Guest] --> FE
-    FE -->|HTTP / JSON| API[FastAPI REST API]
+    Student --> Frontend[React + TypeScript Frontend]
+    Librarian --> Frontend
+    Admin --> Frontend
+
+    Frontend --> API[FastAPI REST API]
     API --> DB[(Supabase PostgreSQL)]
-    API --> AUTH[Authentication and Authorization]
-    API --> DOCS[FastAPI API Documentation /api/docs]
+    API --> Auth[Authentication and Authorization]
+    API --> Docs[FastAPI Docs /api/docs]
 ```
 
 The frontend sends HTTP requests to the backend. The backend validates requests, applies business rules and permissions, and reads or updates records in Supabase PostgreSQL. In the Beta release, authentication and authorization are enforced by the backend. The backend also manages sessions, group permissions, and audit records.
@@ -82,7 +82,6 @@ The frontend sends HTTP requests to the backend. The backend validates requests,
 |---|---|---|
 | Unauthenticated visitor | MVP | Can browse the catalog, search books, and view book details and availability. The MVP has no individual user accounts. |
 | Library operator | MVP | Performs the core book-management operations for the demonstration. |
-| Guest | Beta | Not logged in; can register, log in, and access public book browsing. |
 | Student | Beta | Searches for books, views availability, submits loan requests, views personal loan records, and uses permitted group features. |
 | Librarian | Beta | Manages book records and processes loan requests and returns. |
 | Admin | Beta | Manages user accounts, assigns roles, controls account status, and accesses administrative features. |
@@ -94,63 +93,67 @@ In the Beta, `student`, `librarian`, and `admin` are global roles stored with ea
 **MVP**
 
 ```mermaid
-flowchart LR
-    U[Library User] --> C1((Browse Books))
-    U --> C2((Search Books))
-    U --> C3((View Book Details))
-    U --> C4((View Availability))
-    L[Library Operator] --> C5((Create Books))
-    L --> C6((Update Books))
-    L --> C7((Delete Books))
+flowchart TD
+    User[Unauthenticated Visitor] --> Browse[Browse Books]
+    User --> Search[Search Books]
+    User --> Details[View Book Details and Availability]
+
+    Operator[Library Operator] --> Create[Create Book]
+    Operator --> Update[Update Book]
+    Operator --> Delete[Delete Book]
 ```
 
 **Beta**
 
 ```mermaid
-flowchart LR
-    G[Guest] --> A1((Register / Login))
-    S[Student] --> A2((Search Books))
-    S --> A3((Submit Loan Request))
-    S --> A4((View Own Loans))
-    S --> A5((Access Groups and Reading Lists))
-    L[Librarian] --> A6((Manage Books))
-    L --> A7((Process Loans))
-    AD[Admin] --> A8((Manage Users))
-    AD --> A9((Assign Roles))
-    AD --> A10((Activate / Deactivate / Ban Users))
-    AD --> A11((View Dashboard and Audit Logs))
-    AD --> A12((Manage Administrative Operations))
+flowchart TD
+    Student --> Register[Register / Login]
+    Librarian --> Register
+    Admin --> Register
+
+    Student --> Search[Search and Browse Books]
+    Student --> Loan[Submit Loan Request]
+    Student --> Personal[View Own Loan Records]
+    Student --> Groups[Access Permitted Group Features]
+
+    Librarian --> Books[Manage Books]
+    Librarian --> Process[Process Loan Requests and Returns]
+
+    Admin --> Users[Manage Users and Roles]
+    Admin --> Status[Manage Account Status]
+    Admin --> Audit[View Audit Logs]
+    Admin --> Dashboard[View Dashboard]
 ```
 
 An authenticated user can access only the operations permitted by their role and applicable resource permissions. An Admin manages user accounts and administrative operations; a Librarian manages library operations; a Student accesses personal loan records and permitted group features. Group owners and members can perform group operations according to the permissions enforced by the backend.
 
 ### 2.4 Constraints
 
-* C-1: The frontend must use React with TypeScript.
-* C-2: The backend must use Python with FastAPI.
-* C-3: Supabase PostgreSQL is the database for both releases.
-* C-4: The frontend and backend communicate through REST APIs using JSON.
-* C-5: The backend must validate input and return appropriate HTTP status codes.
-* C-6: In the Beta, authentication and permission checks must be implemented on the server.
-* C-7: API endpoints and request/response schemas must be documented through FastAPI's `/api/docs` interface.
-* C-8: The deployment environment must support the frontend, backend, and database connection.
-* C-9: Authentication secrets and database credentials must be supplied through environment configuration.
-* C-10: Group ownership and membership permissions must be enforced by the backend.
+- C-1: The frontend must use React with TypeScript.
+- C-2: The backend must use Python with FastAPI.
+- C-3: Supabase PostgreSQL is the database for both releases.
+- C-4: The frontend and backend communicate through REST APIs using JSON.
+- C-5: The backend must validate input and return appropriate HTTP status codes.
+- C-6: In the Beta, authentication and permission checks must be implemented on the server.
+- C-7: API endpoints and request/response schemas must be documented through FastAPI's `/api/docs` interface.
+- C-8: The deployment environment must support the frontend, backend, and database connection.
+- C-9: Authentication secrets and database credentials must be supplied through environment configuration.
+- C-10: Group ownership and membership permissions must be enforced by the backend.
 
 ### 2.5 Assumptions
 
-* A-1: A working Supabase PostgreSQL database is available to the application.
-* A-2: The application is primarily intended for a university library demonstration and a limited number of users.
-* A-3: In the MVP, the demonstration does not require individual user accounts.
-* A-4: In the Beta, an initial Admin account can be configured through a controlled setup process.
-* A-5: Book availability is maintained using the book's recorded copy information and applicable loan activity.
-* A-6: Loan policies, such as loan duration and borrowing limits, remain subject to the implemented application rules.
-* A-7: Authenticated users must have valid access credentials to use protected endpoints.
-* A-8: Group operations depend on group ownership, membership, and assigned permissions.
+- A-1: A working Supabase PostgreSQL database is available to the application.
+- A-2: The application is primarily intended for a university library demonstration and a limited number of users.
+- A-3: In the MVP, the demonstration does not require individual user accounts.
+- A-4: In the Beta, an initial Admin account can be configured through a controlled setup process.
+- A-5: Book availability is maintained using the book's recorded copy information and applicable loan activity.
+- A-6: Loan policies, such as loan duration and borrowing limits, remain subject to the implemented application rules.
+- A-7: Authenticated users must have valid access credentials to use protected endpoints.
+- A-8: Group operations depend on group ownership, membership, and assigned permissions.
 
 ## 3. Functional requirements
 
-### 3.1 Book management â€” MVP
+### 3.1 Book management — MVP
 
 | **ID** | **Requirement** | **Release** | **Story** |
 |---|---|---|---|
@@ -164,7 +167,7 @@ An authenticated user can access only the operations permitted by their role and
 | FR-08 | The system shall store book records in Supabase PostgreSQL so that data persists after an application restart. | MVP | US-01, US-02 |
 | FR-09 | The system shall expose book creation, listing, retrieval, update, and deletion through REST API endpoints. | MVP | US-01, US-02, US-03 |
 
-### 3.2 Book search and availability â€” MVP
+### 3.2 Book search and availability — MVP
 
 | **ID** | **Requirement** | **Release** | **Story** |
 |---|---|---|---|
@@ -175,7 +178,7 @@ An authenticated user can access only the operations permitted by their role and
 | FR-14 | The system shall return an empty result set when no books match a valid search query. | MVP | US-04 |
 | FR-15 | The system shall validate search parameters and return a clear error for invalid input. | MVP | US-09 |
 
-### 3.3 Loan management â€” Beta
+### 3.3 Loan management — Beta
 
 | **ID** | **Requirement** | **Release** | **Story** |
 |---|---|---|---|
@@ -188,11 +191,11 @@ An authenticated user can access only the operations permitted by their role and
 | FR-22 | The system shall store loan requests and status changes in Supabase PostgreSQL. | Beta | US-06, US-07, US-08 |
 | FR-23 | The system shall maintain consistent loan and book availability information when loan statuses are updated. | Beta | US-05, US-08 |
 
-### 3.4 Authentication and profile â€” Beta
+### 3.4 Authentication and profile — Beta
 
 | **ID** | **Requirement** | **Release** | **Story** |
 |---|---|---|---|
-| FR-24 | The system shall allow a guest to register a new user account with the required registration information. | Beta | US-10 |
+| FR-24 | The system shall allow a user to register a new user account with the required registration information. | Beta | US-10 |
 | FR-25 | The system shall allow a registered user to log in with valid credentials. Invalid credentials shall return `401 Unauthorized`. | Beta | US-11 |
 | FR-26 | The system shall identify authenticated requests using JWT access tokens. | Beta | US-11 |
 | FR-27 | The system shall allow an authenticated user to access loan records according to the user's permissions and ownership. | Beta | US-12 |
@@ -204,7 +207,7 @@ An authenticated user can access only the operations permitted by their role and
 | FR-33 | The system shall allow a user to change their password through the password-change operation. | Beta | US-12 |
 | FR-34 | The system shall allow a user to view their active sessions and revoke an individual session. | Beta | US-12 |
 
-### 3.5 Roles and user management â€” Beta
+### 3.5 Roles and user management — Beta
 
 | **ID** | **Requirement** | **Release** | **Story** |
 |---|---|---|---|
@@ -222,7 +225,7 @@ An authenticated user can access only the operations permitted by their role and
 | FR-46 | A non-Admin user calling an Admin-only endpoint shall receive `403 Forbidden`. | Beta | US-14, US-15 |
 | FR-47 | An Admin shall be able to revoke a user's sessions through the user-management API. | Beta | US-16 |
 
-### 3.6 Groups, reading lists, and audit â€” Beta
+### 3.6 Groups, reading lists, and audit — Beta
 
 | **ID** | **Requirement** | **Release** | **Story** |
 |---|---|---|---|
@@ -237,7 +240,7 @@ An authenticated user can access only the operations permitted by their role and
 | FR-56 | The system shall record tracked system activities as audit log entries. | Beta | US-21 |
 | FR-57 | The system shall allow authorized administrators to retrieve and filter audit log records. | Beta | US-21 |
 
-### 3.7 Security and API behavior â€” Beta
+### 3.7 Security and API behavior — Beta
 
 | **ID** | **Requirement** | **Release** | **Story** |
 |---|---|---|---|
@@ -280,38 +283,38 @@ stateDiagram-v2
 
 A loan request is created through the loan creation endpoint. Authorized users can update its status through the loan status endpoint. The backend validates status changes and applies the relevant business rules. Exact accepted status values and transitions are determined by the implemented loan workflow.
 
-### 3.10 Permission matrix â€” Beta
+### 3.10 Permission matrix — Beta
 
-| **Action** | **Guest** | **Student** | **Librarian** | **Admin** |
-|---|---|---|---|---|
-| Register and log in | Yes | â€” | â€” | â€” |
-| Browse and search books | Yes | Yes | Yes | Yes |
-| View book details and availability | Yes | Yes | Yes | Yes |
-| Create book records | No | No (`403`) | According to backend authorization | According to backend authorization |
-| Update book records | No | No (`403`) | According to backend authorization | According to backend authorization |
-| Delete book records | No | No (`403`) | According to backend authorization | According to backend authorization |
-| Submit a loan request | No | According to backend authorization | According to backend authorization | According to backend authorization |
-| View personal loan records | No | Own records | According to backend authorization | According to backend authorization |
-| View loan records | No | According to backend authorization | According to backend authorization | According to backend authorization |
-| Update loan status | No | No (`403`) | According to backend authorization | According to backend authorization |
-| View and update own profile | No | Yes | Yes | Yes |
-| Change own password | No | Yes | Yes | Yes |
-| View and revoke own sessions | No | Yes | Yes | Yes |
-| List user accounts | No | No (`403`) | No (`403`) | Yes |
-| View user details | No | No (`403`) | No (`403`) | Yes |
-| Assign or change roles | No | No (`403`) | No (`403`) | Yes |
-| Activate or deactivate accounts | No | No (`403`) | No (`403`) | Yes |
-| Ban or unban users | No | No (`403`) | No (`403`) | Yes |
-| Perform bulk user actions | No | No (`403`) | No (`403`) | Yes |
-| View administrative dashboard statistics | No | No (`403`) | No (`403`) | Yes |
-| Revoke another user's sessions | No | No (`403`) | No (`403`) | Yes |
-| Create and manage groups | No | According to group permissions | According to group permissions | According to group permissions |
-| Manage group members and permissions | No | Owner/permission dependent | Owner/permission dependent | According to backend authorization |
-| Access group reading lists | No | Membership/permission dependent | Membership/permission dependent | According to backend authorization |
-| View audit logs | No | No (`403`) | No (`403`) | Yes |
-| Access protected APIs while inactive or banned | No | No (`401`) | No (`401`) | No (`401`) |
+| **Action** | **Student** | **Librarian** | **Admin** |
+|---|---|---|---|
+| Register and log in | — | — | — |
+| Browse and search books | Yes | Yes | Yes |
+| View book details and availability | Yes | Yes | Yes |
+| Create book records | No (`403`) | According to backend authorization | According to backend authorization |
+| Update book records | No (`403`) | According to backend authorization | According to backend authorization |
+| Delete book records | No (`403`) | According to backend authorization | According to backend authorization |
+| Submit a loan request | According to backend authorization | According to backend authorization | According to backend authorization |
+| View personal loan records | Own records | According to backend authorization | According to backend authorization |
+| View loan records | According to backend authorization | According to backend authorization | According to backend authorization |
+| Update loan status | No (`403`) | According to backend authorization | According to backend authorization |
+| View and update own profile | Yes | Yes | Yes |
+| Change own password | Yes | Yes | Yes |
+| View and revoke own sessions | Yes | Yes | Yes |
+| List user accounts | No (`403`) | No (`403`) | Yes |
+| View user details | No (`403`) | No (`403`) | Yes |
+| Assign or change roles | No (`403`) | No (`403`) | Yes |
+| Activate or deactivate accounts | No (`403`) | No (`403`) | Yes |
+| Ban or unban users | No (`403`) | No (`403`) | Yes |
+| Perform bulk user actions | No (`403`) | No (`403`) | Yes |
+| View administrative dashboard statistics | No (`403`) | No (`403`) | Yes |
+| Revoke another user's sessions | No (`403`) | No (`403`) | Yes |
+| Create and manage groups | According to group permissions | According to group permissions | According to group permissions |
+| Manage group members and permissions | Owner/permission dependent | Owner/permission dependent | According to backend authorization |
+| Access group reading lists | Membership/permission dependent | Membership/permission dependent | According to backend authorization |
+| View audit logs | No (`403`) | No (`403`) | Yes |
+| Access protected APIs while inactive or banned | No (`401`) | No (`401`) | No (`401`) |
 
-In this matrix, â€œYesâ€ means the action is permitted subject to valid input and applicable business rules. â€œAccording to backend authorizationâ€ means access is determined by the implemented role, ownership, membership, or permission checks. Group permissions are not determined solely by the user's global role.
+In this matrix, “Yes” means the action is permitted subject to valid input and applicable business rules. “According to backend authorization” means access is determined by the implemented role, ownership, membership, or permission checks. Group permissions are not determined solely by the user's global role.
 
 ### 3.11 Status codes
 
@@ -358,165 +361,165 @@ In this matrix, â€œYesâ€ means the action is permitted subject to valid
 
 **AC-01 Create book (FR-01, FR-08)**
 
-* Given valid book details.
-* When a client sends a book creation request.
-* Then the system returns the created book record and stores it in Supabase PostgreSQL.
+- Given valid book details.
+- When a client sends a book creation request.
+- Then the system returns the created book record and stores it in Supabase PostgreSQL.
 
 **AC-02 Reject invalid book (FR-06)**
 
-* Given a request containing invalid or missing required book information.
-* When the client submits the request.
-* Then the system returns a validation error identifying the invalid input.
+- Given a request containing invalid or missing required book information.
+- When the client submits the request.
+- Then the system returns a validation error identifying the invalid input.
 
 **AC-03 List and view books (FR-02, FR-03, FR-07)**
 
-* Given that book records exist.
-* When the client requests the book list or an existing book by ID.
-* Then the system returns the relevant records.
-* When the requested book ID does not exist.
-* Then the system returns `404 Not Found`.
+- Given that book records exist.
+- When the client requests the book list or an existing book by ID.
+- Then the system returns the relevant records.
+- When the requested book ID does not exist.
+- Then the system returns `404 Not Found`.
 
 **AC-04 Update book (FR-04)**
 
-* Given an existing book record.
-* When a client sends a valid update request.
-* Then the system saves the supported changes.
+- Given an existing book record.
+- When a client sends a valid update request.
+- Then the system saves the supported changes.
 
 **AC-05 Delete book (FR-05)**
 
-* Given an existing book that can be deleted without violating applicable data constraints.
-* When the client sends a delete request.
-* Then the system deletes the book record and subsequent retrieval requests no longer return it.
+- Given an existing book that can be deleted without violating applicable data constraints.
+- When the client sends a delete request.
+- Then the system deletes the book record and subsequent retrieval requests no longer return it.
 
-**AC-06 Search books (FR-10â€“FR-15)**
+**AC-06 Search books (FR-10–FR-15)**
 
-* Given books with known titles, authors, and ISBNs.
-* When a client searches by one of these fields.
-* Then the system returns matching records and available book information.
-* When no records match, the system returns an empty result set.
+- Given books with known titles, authors, and ISBNs.
+- When a client searches by one of these fields.
+- Then the system returns matching records and available book information.
+- When no records match, the system returns an empty result set.
 
 **AC-07 API documentation**
 
-* When a developer opens `/api/docs`.
-* Then the documented endpoints, request schemas, and response schemas are available for inspection.
+- When a developer opens `/api/docs`.
+- Then the documented endpoints, request schemas, and response schemas are available for inspection.
 
 ### Beta
 
 **AC-08 Register account (FR-24)**
 
-* Given that a user account does not already exist for the submitted registration information.
-* When a guest submits valid registration details.
-* Then the system creates the user account with the applicable default role.
+- Given that a user account does not already exist for the submitted registration information.
+- When a user submits valid registration details.
+- Then the system creates the user account with the applicable default role.
 
 **AC-09 Login and authentication (FR-25, FR-26, FR-29, FR-31)**
 
-* Given a registered and active user.
-* When the user submits valid credentials.
-* Then the system authenticates the user and provides the required authentication tokens.
-* When the credentials are invalid.
-* Then the system returns `401 Unauthorized`.
+- Given a registered and active user.
+- When the user submits valid credentials.
+- Then the system authenticates the user and provides the required authentication tokens.
+- When the credentials are invalid.
+- Then the system returns `401 Unauthorized`.
 
 **AC-10 Authentication required (FR-29)**
 
-* When a guest requests a protected endpoint.
-* Then the system returns `401 Unauthorized`.
+- When an unauthenticated request is made to a protected endpoint.
+- Then the system returns `401 Unauthorized`.
 
-**AC-11 Role-restricted operations (FR-35â€“FR-37, FR-46)**
+**AC-11 Role-restricted operations (FR-35–FR-37, FR-46)**
 
-* Given users with different global roles.
-* When a user attempts an operation that is not permitted by the backend authorization rules.
-* Then the system rejects the operation with `403 Forbidden`.
+- Given users with different global roles.
+- When a user attempts an operation that is not permitted by the backend authorization rules.
+- Then the system rejects the operation with `403 Forbidden`.
 
-**AC-12 Process loans (FR-16â€“FR-23)**
+**AC-12 Process loans (FR-16–FR-23)**
 
-* Given an authenticated user and an existing book.
-* When the user submits a valid loan request.
-* Then the system creates and stores the loan request.
-* When an authorized user updates the loan status.
-* Then the system validates the status change and stores the updated record.
+- Given an authenticated user and an existing book.
+- When the user submits a valid loan request.
+- Then the system creates and stores the loan request.
+- When an authorized user updates the loan status.
+- Then the system validates the status change and stores the updated record.
 
 **AC-13 Personal loan privacy (FR-27)**
 
-* Given two different student accounts with separate loan records.
-* When one student requests their personal loan records.
-* Then the response contains only the records that the student is authorized to access.
+- Given two different student accounts with separate loan records.
+- When one student requests their personal loan records.
+- Then the response contains only the records that the student is authorized to access.
 
 **AC-14 Admin-only user management (FR-38, FR-39, FR-46)**
 
-* When a Student or Librarian calls an Admin-only user-management endpoint.
-* Then the system returns `403 Forbidden`.
-* When an Admin makes a valid request.
-* Then the system returns the requested user information.
+- When a Student or Librarian calls an Admin-only user-management endpoint.
+- Then the system returns `403 Forbidden`.
+- When an Admin makes a valid request.
+- Then the system returns the requested user information.
 
 **AC-15 Role assignment (FR-40)**
 
-* Given an existing user account.
-* When an Admin changes the user's role to a supported role.
-* Then the system stores the new role and applies the updated authorization rules on subsequent requests.
+- Given an existing user account.
+- When an Admin changes the user's role to a supported role.
+- Then the system stores the new role and applies the updated authorization rules on subsequent requests.
 
-**AC-16 Account status and ban management (FR-41â€“FR-43)**
+**AC-16 Account status and ban management (FR-41–FR-43)**
 
-* Given an existing user account.
-* When an Admin activates, deactivates, bans, or unbans the account.
-* Then the system updates the account state.
-* When an inactive or banned user attempts to access a protected endpoint.
-* Then the system denies access.
+- Given an existing user account.
+- When an Admin activates, deactivates, bans, or unbans the account.
+- Then the system updates the account state.
+- When an inactive or banned user attempts to access a protected endpoint.
+- Then the system denies access.
 
-**AC-17 Session management (FR-31â€“FR-34, FR-47)**
+**AC-17 Session management (FR-31–FR-34, FR-47)**
 
-* Given an authenticated user with an active session.
-* When the user views or revokes their own session.
-* Then the system processes the request according to session ownership.
-* When an Admin revokes another user's sessions.
-* Then the system applies the session revocation.
+- Given an authenticated user with an active session.
+- When the user views or revokes their own session.
+- Then the system processes the request according to session ownership.
+- When an Admin revokes another user's sessions.
+- Then the system applies the session revocation.
 
 **AC-18 Password protection (FR-28, FR-58)**
 
-* Given a registered user.
-* When the account is created and later retrieved through an API.
-* Then the stored password is hashed, and no password or password hash is returned in the response.
+- Given a registered user.
+- When the account is created and later retrieved through an API.
+- Then the stored password is hashed, and no password or password hash is returned in the response.
 
-**AC-19 Groups and member permissions (FR-48â€“FR-53)**
+**AC-19 Groups and member permissions (FR-48–FR-53)**
 
-* Given a group with an owner and members.
-* When an authorized owner manages the group or its members.
-* Then the system applies the requested operation according to group ownership and permission rules.
-* When a user attempts an unauthorized group operation.
-* Then the system rejects the operation.
+- Given a group with an owner and members.
+- When an authorized owner manages the group or its members.
+- Then the system applies the requested operation according to group ownership and permission rules.
+- When a user attempts an unauthorized group operation.
+- Then the system rejects the operation.
 
 **AC-20 Reading lists (FR-54, FR-55)**
 
-* Given a group with an accessible reading list.
-* When a permitted member views or updates a reading-list item.
-* Then the system returns or updates the item according to the member's permissions.
+- Given a group with an accessible reading list.
+- When a permitted member views or updates a reading-list item.
+- Then the system returns or updates the item according to the member's permissions.
 
 **AC-21 Audit logs (FR-56, FR-57, FR-64)**
 
-* Given an applicable tracked system activity.
-* When the activity is performed.
-* Then the system records the relevant audit information.
-* When an authorized administrator requests audit records.
-* Then the system returns the records according to the supported filters and pagination.
+- Given an applicable tracked system activity.
+- When the activity is performed.
+- Then the system records the relevant audit information.
+- When an authorized administrator requests audit records.
+- Then the system returns the records according to the supported filters and pagination.
 
 **AC-22 Dashboard and bulk user actions (FR-44, FR-45)**
 
-* Given an Admin account.
-* When the Admin requests dashboard statistics or performs a supported bulk user action.
-* Then the system returns the applicable statistics or processes the requested action.
+- Given an Admin account.
+- When the Admin requests dashboard statistics or performs a supported bulk user action.
+- Then the system returns the applicable statistics or processes the requested action.
 
-**AC-23 Error handling and secure configuration (FR-59â€“FR-63)**
+**AC-23 Error handling and secure configuration (FR-59–FR-63)**
 
-* Given an invalid request or an unexpected backend error.
-* When the API processes the request.
-* Then it returns an appropriate error response without exposing secrets, password data, database credentials, or internal stack traces.
+- Given an invalid request or an unexpected backend error.
+- When the API processes the request.
+- Then it returns an appropriate error response without exposing secrets, password data, database credentials, or internal stack traces.
 
 ### General
 
 **AC-24 Deployment**
 
-* Given the deployed frontend, backend, and database configuration.
-* When a user accesses the deployed application.
-* Then the frontend can communicate with the backend and the backend can access the configured database.
+- Given the deployed frontend, backend, and database configuration.
+- When a user accesses the deployed application.
+- Then the frontend can communicate with the backend and the backend can access the configured database.
 
 ## 6. Traceability
 
@@ -525,24 +528,24 @@ In this matrix, â€œYesâ€ means the action is permitted subject to valid
 | US-01 | FR-01, FR-08, FR-09 | `POST /api/books/` | MVP |
 | US-02 | FR-02, FR-03, FR-07, FR-09 | `GET /api/books/`, `GET /api/books/{book_id}` | MVP |
 | US-03 | FR-04, FR-05 | `PUT /api/books/{book_id}`, `DELETE /api/books/{book_id}` | MVP |
-| US-04 | FR-10â€“FR-12, FR-14 | `GET /api/books/` | MVP |
+| US-04 | FR-10–FR-12, FR-14 | `GET /api/books/` | MVP |
 | US-05 | FR-13, FR-23 | `GET /api/books/`, `GET /api/books/{book_id}` | MVP / Beta |
 | US-06 | FR-16, FR-17, FR-22 | `POST /api/loans/` | Beta |
 | US-07 | FR-18, FR-22 | `GET /api/loans/`, `GET /api/loans/{loan_id}` | Beta |
-| US-08 | FR-19â€“FR-23 | `PATCH /api/loans/{loan_id}/status` | Beta |
+| US-08 | FR-19–FR-23 | `PATCH /api/loans/{loan_id}/status` | Beta |
 | US-09 | FR-06, FR-07, FR-15, FR-21 | Relevant endpoints, `/api/docs` | MVP / Beta |
 | US-10 | FR-24 | `POST /api/auth/register` | Beta |
 | US-11 | FR-25, FR-26, FR-29, FR-31, FR-32 | `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout` | Beta |
 | US-12 | FR-27, FR-30, FR-33, FR-34 | `GET /api/auth/me`, `PATCH /api/auth/me`, `POST /api/auth/change-password`, `GET /api/auth/me/sessions`, `DELETE /api/auth/me/sessions/{session_id}` | Beta |
 | US-13 | FR-36, FR-37 | `/api/books/`, `/api/loans/` | Beta |
-| US-14 | FR-38â€“FR-40, FR-44â€“FR-46 | `GET /api/users/`, `GET /api/users/{user_id}`, `PATCH /api/users/{user_id}/role`, `POST /api/users/bulk-action`, `GET /api/users/admin/dashboard-stats` | Beta |
-| US-15 | FR-35â€“FR-37, FR-46, FR-59, FR-62 | Protected endpoints and role authorization | Beta |
-| US-16 | FR-41â€“FR-43, FR-47 | `PATCH /api/users/{user_id}/activate`, `PATCH /api/users/{user_id}/deactivate`, `POST /api/users/{user_id}/ban`, `PATCH /api/users/{user_id}/unban`, `POST /api/users/{user_id}/sessions/revoke` | Beta |
-| US-17 | FR-28, FR-58â€“FR-63 | Authentication, user, and protected endpoints | Beta |
-| US-18 | FR-48â€“FR-50 | `GET /api/groups`, `POST /api/groups`, `GET /api/groups/{group_id}`, `PATCH /api/groups/{group_id}`, `DELETE /api/groups/{group_id}` | Beta |
-| US-19 | FR-51â€“FR-53 | `/api/groups/{group_id}/members` and related member permission endpoints | Beta |
+| US-14 | FR-38–FR-40, FR-44–FR-46 | `GET /api/users/`, `GET /api/users/{user_id}`, `PATCH /api/users/{user_id}/role`, `POST /api/users/bulk-action`, `GET /api/users/admin/dashboard-stats` | Beta |
+| US-15 | FR-35–FR-37, FR-46, FR-59, FR-62 | Protected endpoints and role authorization | Beta |
+| US-16 | FR-41–FR-43, FR-47 | `PATCH /api/users/{user_id}/activate`, `PATCH /api/users/{user_id}/deactivate`, `POST /api/users/{user_id}/ban`, `PATCH /api/users/{user_id}/unban`, `POST /api/users/{user_id}/sessions/revoke` | Beta |
+| US-17 | FR-28, FR-58–FR-63 | Authentication, user, and protected endpoints | Beta |
+| US-18 | FR-48–FR-50 | `GET /api/groups`, `POST /api/groups`, `GET /api/groups/{group_id}`, `PATCH /api/groups/{group_id}`, `DELETE /api/groups/{group_id}` | Beta |
+| US-19 | FR-51–FR-53 | `/api/groups/{group_id}/members` and related member permission endpoints | Beta |
 | US-20 | FR-54, FR-55 | `/api/groups/{group_id}/reading-list` and related reading-list item endpoints | Beta |
 | US-21 | FR-56, FR-57, FR-64 | `GET /api/audit/` | Beta |
 | US-22 | FR-44, FR-45 | `POST /api/users/bulk-action`, `GET /api/users/admin/dashboard-stats` | Beta |
-| US-23 | FR-31â€“FR-34, FR-47 | Authentication session and user session endpoints | Beta |
-| US-24 | FR-59â€“FR-63 | Relevant API endpoints and protected operations | Beta |
+| US-23 | FR-31–FR-34, FR-47 | Authentication session and user session endpoints | Beta |
+| US-24 | FR-59–FR-63 | Relevant API endpoints and protected operations | Beta |
